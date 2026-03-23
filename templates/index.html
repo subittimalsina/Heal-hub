@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero-grid home-hero">
+    <div class="home-hero-column">
+      <div class="hero-copy surface" data-reveal>
+        <div class="hero-signal-row">
+          <span class="signal-chip signal-chip-primary">AI Triage</span>
+          <span class="signal-chip signal-chip-teal">Live Hospital Network</span>
+          <span class="signal-chip signal-chip-amber">Surge Simulation Ready</span>
+        </div>
+        <p class="eyebrow">High-value health systems</p>
+        <h1>HealHub: AI for Smarter Health Systems</h1>
+        <p class="lead">
+          HealHub is an AI-powered hospital coordination platform built to optimize triage,
+          resource allocation, treatment order, and patient redistribution across a live care network.
+        </p>
+        <p class="subcopy">
+          Instead of acting like a symptom checker, HealHub helps hospitals make system-level decisions
+          under real constraints such as limited beds, doctors, and ICU capacity.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="{{ url_for('login') }}">Get Started</a>
+          <a class="btn btn-secondary" href="{{ url_for('dashboard_page') }}">View Dashboard</a>
+        </div>
+
+        <div class="hero-metrics-ribbon">
+          <div class="hero-ribbon-stat">
+            <span class="meta-label">Live network</span>
+            <strong>3 hospitals</strong>
+          </div>
+          <div class="hero-ribbon-stat">
+            <span class="meta-label">Decision scope</span>
+            <strong>Triage + allocation + routing</strong>
+          </div>
+          <div class="hero-ribbon-stat">
+            <span class="meta-label">System focus</span>
+            <strong>System optimization over diagnosis-only AI</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-trust-strip home-trust-strip surface" data-reveal>
+        <div class="home-trust-intro">
+          <p class="eyebrow">Operating pillars</p>
+          <strong>HealHub works across triage, hospital capacity, and live network coordination at the same time.</strong>
+        </div>
+
+        <div class="home-trust-grid">
+          <article class="trust-item trust-item-home">
+            <span class="meta-label">Triage layer</span>
+            <strong>Prioritize unstable patients first</strong>
+            <p>Urgency scoring blends symptoms, vitals, risk factors, and wait pressure.</p>
+          </article>
+          <article class="trust-item trust-item-home">
+            <span class="meta-label">Capacity layer</span>
+            <strong>Place patients where care can start sooner</strong>
+            <p>Allocation considers doctors, beds, ICU supply, and queue depth together.</p>
+          </article>
+          <article class="trust-item trust-item-home">
+            <span class="meta-label">Network layer</span>
+            <strong>Redirect safely when one hospital is overloaded</strong>
+            <p>Every recommendation stays explainable so clinicians can trust the next move.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual hero-visual-premium surface" data-reveal>
+      <div class="visual-mesh"></div>
+      <div class="preview-shell preview-shell-premium">
+        <div class="window-chrome">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="preview-header">
+          <div>
+            <span class="meta-label">HealHub command preview</span>
+            <strong>Network optimization cockpit</strong>
+          </div>
+          <span class="status-chip status-stable">Live AI orchestration</span>
+        </div>
+
+        <div class="preview-stage">
+          <div class="preview-stat-grid">
+            <div class="preview-stat">
+              <span>Total hospitals</span>
+              <strong>3</strong>
+            </div>
+            <div class="preview-stat">
+              <span>Critical cases tracked</span>
+              <strong>5</strong>
+            </div>
+            <div class="preview-stat">
+              <span>Average network wait</span>
+              <strong>18m</strong>
+            </div>
+          </div>
+
+          <div class="preview-panel">
+            <div class="mini-chart">
+              <span class="mini-bar bar-blue bar-tall"></span>
+              <span class="mini-bar bar-teal bar-mid"></span>
+              <span class="mini-bar bar-amber bar-xl"></span>
+              <span class="mini-bar bar-blue bar-short"></span>
+              <span class="mini-bar bar-red bar-max"></span>
+            </div>
+            <div class="preview-copy">
+              <strong>AI prioritizes the queue, reallocates scarce resources, and recommends safe redistribution when one facility approaches overload.</strong>
+            </div>
+          </div>
+
+          <div class="preview-insight-grid">
+            <div class="floating-status-card">
+              <span class="meta-label">Priority engine</span>
+              <strong>Critical queue reshuffled in real time</strong>
+              <p>High-risk cases are elevated using symptoms, vitals, age, and instability.</p>
+            </div>
+
+            <div class="floating-status-card">
+              <span class="meta-label">Redistribution layer</span>
+              <strong>Patients routed away from bottlenecks</strong>
+              <p>HealHub compares ICU, bed, and doctor availability before redirecting.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-queue">
+          <div class="preview-case">
+            <span class="status-chip status-critical">Critical</span>
+            <div>
+              <strong>HH-014 redirected to Pokhara</strong>
+              <p>No ICU slot available in Kathmandu.</p>
+            </div>
+          </div>
+          <div class="preview-case">
+            <span class="status-chip status-warning">Queue</span>
+            <div>
+              <strong>Wait time reduced by 24%</strong>
+              <p>Network rebalanced after surge simulation.</p>
+            </div>
+          </div>
+          <div class="preview-case">
+            <span class="status-chip status-stable">Stable</span>
+            <div>
+              <strong>Biratnagar absorbing maternal referrals</strong>
+              <p>Specialty fit improved throughput without raising network-wide strain.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-side-note">
+        <span class="meta-label">Why this feels different</span>
+        <strong>HealHub shows AI as a control layer for the whole health system.</strong>
+        <p>That makes the first screen feel more operational, more credible, and easier to understand.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block home-capabilities" data-reveal>
+    <div class="section-head home-section-head">
+      <div>
+        <p class="eyebrow">Core capabilities</p>
+        <h2>The operating system behind smarter hospital flow</h2>
+      </div>
+      <p class="subcopy">
+        HealHub turns intake, resource limits, and transfer logic into one coordinated control layer.
+      </p>
+    </div>
+
+    <div class="feature-grid home-feature-grid">
+      <article class="feature-card surface home-feature-card home-feature-card-primary">
+        <div class="feature-card-top">
+          <span class="feature-kicker">01</span>
+          <span class="signal-chip signal-chip-primary feature-signal">Urgency engine</span>
+        </div>
+        <h3>AI Triage Scoring</h3>
+        <p>Generates urgency scores and triage levels with a clear reason trail for every case.</p>
+        <div class="feature-foot">
+          <span class="meta-label">Output</span>
+          <strong>Priority ranking clinicians can inspect</strong>
+        </div>
+      </article>
+      <article class="feature-card surface home-feature-card home-feature-card-teal">
+        <div class="feature-card-top">
+          <span class="feature-kicker">02</span>
+          <span class="signal-chip signal-chip-teal feature-signal">Capacity balancing</span>
+        </div>
+        <h3>Smart Resource Allocation</h3>
+        <p>Balances doctors, beds, and ICU capacity so scarce resources go where they matter most.</p>
+        <div class="feature-foot">
+          <span class="meta-label">Output</span>
+          <strong>Scarcity-aware treatment placement</strong>
+        </div>
+      </article>
+      <article class="feature-card surface home-feature-card home-feature-card-amber">
+        <div class="feature-card-top">
+          <span class="feature-kicker">03</span>
+          <span class="signal-chip signal-chip-amber feature-signal">Network routing</span>
+        </div>
+        <h3>Multi-Hospital Redistribution</h3>
+        <p>Prevents overload by shifting patients to better-fit facilities based on capacity and specialty match.</p>
+        <div class="feature-foot">
+          <span class="meta-label">Output</span>
+          <strong>Safer transfers away from local bottlenecks</strong>
+        </div>
+      </article>
+      <article class="feature-card surface home-feature-card home-feature-card-rose">
+        <div class="feature-card-top">
+          <span class="feature-kicker">04</span>
+          <span class="signal-chip signal-chip-primary feature-signal">Stress testing</span>
+        </div>
+        <h3>Emergency Surge Simulation</h3>
+        <p>Stress-tests the network with sudden demand spikes and shows reprioritization in real time.</p>
+        <div class="feature-foot">
+          <span class="meta-label">Output</span>
+          <strong>Visible rebalancing during sudden demand spikes</strong>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="impact-grid home-impact-grid">
+    <article class="surface focus-card home-focus-card home-focus-card-primary" data-reveal>
+      <p class="eyebrow">Why it matters</p>
+      <h2>Built for health systems where pressure moves faster than capacity</h2>
+      <p class="subcopy">
+        HealHub fits referral-heavy settings like Nepal, where urban hospitals absorb the most complex
+        demand and every delay has a system-wide cost.
+      </p>
+      <div class="impact-stat-grid">
+        <div class="impact-stat">
+          <span class="meta-label">Outcome</span>
+          <strong>Lower wait pressure</strong>
+          <p>High-risk arrivals move up before queue delays compound.</p>
+        </div>
+        <div class="impact-stat">
+          <span class="meta-label">Outcome</span>
+          <strong>Better utilization</strong>
+          <p>Every available bed, clinician, and ICU slot is used more intentionally.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="surface focus-card home-focus-card home-focus-card-secondary" data-reveal>
+      <p class="eyebrow">Operational model</p>
+      <h2>Not just diagnose. Coordinate care across the whole network.</h2>
+      <ul class="clean-list clean-list-home">
+        <li>Detect urgency from intake severity and vital instability.</li>
+        <li>Compare hospitals by live availability and specialty fit.</li>
+        <li>Assign treatment, waiting, or redirection based on system pressure.</li>
+        <li>Explain every recommendation for clinicians and operations teams.</li>
+      </ul>
+      <div class="home-proof-row">
+        <span class="signal-chip signal-chip-primary">Explainable outputs</span>
+        <span class="signal-chip signal-chip-teal">Live capacity aware</span>
+        <span class="signal-chip signal-chip-amber">Transfer ready</span>
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('platform_page') }}">Explore the Platform</a>
+    </article>
+  </section>
+
+  <section class="cta-band home-cta-band surface" data-reveal>
+    <div class="home-cta-copy">
+      <p class="eyebrow">Get started</p>
+      <h2>Open the live HealHub command center</h2>
+      <p class="subcopy">
+        Use the demo accounts to test intake, queue reshuffling, redirection, and surge response in minutes.
+      </p>
+    </div>
+    <div class="button-group home-cta-actions">
+      <a class="btn btn-primary" href="{{ url_for('login') }}">Open Login</a>
+      <a class="btn btn-ghost" href="{{ url_for('platform_page') }}">See the Platform</a>
+    </div>
+  </section>
+{% endblock %}

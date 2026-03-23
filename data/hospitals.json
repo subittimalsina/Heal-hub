@@ -1,0 +1,29 @@
+[
+  {
+    "id": "kathmandu_general",
+    "name": "Kathmandu General Hospital",
+    "city": "Kathmandu",
+    "total_beds": 8,
+    "doctors_on_duty": 4,
+    "icu_beds": 3,
+    "specialties": ["cardiac", "trauma", "neuro"]
+  },
+  {
+    "id": "pokhara_regional",
+    "name": "Pokhara Regional Hospital",
+    "city": "Pokhara",
+    "total_beds": 7,
+    "doctors_on_duty": 3,
+    "icu_beds": 2,
+    "specialties": ["respiratory", "infectious", "general"]
+  },
+  {
+    "id": "biratnagar_community",
+    "name": "Biratnagar Community Hospital",
+    "city": "Biratnagar",
+    "total_beds": 6,
+    "doctors_on_duty": 3,
+    "icu_beds": 2,
+    "specialties": ["maternal", "orthopedic", "general"]
+  }
+]

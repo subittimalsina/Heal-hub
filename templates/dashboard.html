@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="dashboard-overview" data-reveal>
+    <article class="surface dashboard-panel dashboard-intro-panel">
+      <div class="hero-signal-row">
+        <span class="signal-chip signal-chip-primary">Live AI Coordination</span>
+        <span class="signal-chip signal-chip-teal">Hospital Network Active</span>
+      </div>
+
+      <div class="dashboard-intro-copy">
+        <div>
+          <p class="eyebrow">AI hospital command center</p>
+          <h1>HealHub Network Dashboard</h1>
+        </div>
+        <p class="lead">
+          Monitor patient flow, live resource pressure, and AI-guided treatment decisions across a coordinated hospital network.
+        </p>
+      </div>
+
+      <div class="dashboard-intro-meta">
+        <div class="hero-meta-card">
+          <span class="meta-label">Current operator</span>
+          <strong>{{ current_user.display_name }}</strong>
+          <small>{{ current_user.role }}</small>
+        </div>
+        <div class="hero-meta-card">
+          <span class="meta-label">Primary mission</span>
+          <strong>Reduce wait, prevent overload, and route care with confidence</strong>
+        </div>
+      </div>
+    </article>
+
+    <aside class="dashboard-overview-side">
+      <article class="surface dashboard-panel dashboard-status-card dashboard-clock-card">
+        <span class="meta-label">Network clock</span>
+        <strong id="clock-value">--:--</strong>
+        <p>Live hospital operations simulator focused on network-wide coordination.</p>
+      </article>
+
+      <article class="surface dashboard-panel dashboard-status-card dashboard-pulse-card">
+        <span class="meta-label">System status</span>
+        <strong id="pulse-title">Loading operational state</strong>
+        <span class="status-chip status-neutral" id="pulse-status">Initializing</span>
+      </article>
+    </aside>
+  </section>
+
+  <section class="metric-grid dashboard-metric-grid" id="metric-grid" data-reveal></section>
+
+  <section class="surface dashboard-panel dashboard-alert-panel" data-reveal>
+    <div class="dashboard-section-head">
+      <div>
+        <p class="eyebrow">System notices</p>
+        <h2>Live alerts and AI recommendations</h2>
+      </div>
+    </div>
+    <div class="notice-banner" id="insight-banner">Loading HealHub live state...</div>
+    <div class="notice-grid" id="insights-list"></div>
+  </section>
+
+  <section class="dashboard-workspace">
+    <article class="surface dashboard-panel dashboard-intake-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Patient intake</p>
+          <h2>Add and assess a new patient</h2>
+        </div>
+      </div>
+
+      <form id="intake-form" class="intake-form dashboard-form">
+        <div class="input-row two-column">
+          <label>
+            <span>Patient name</span>
+            <input type="text" id="patient-name" placeholder="Patient or referral name" />
+          </label>
+          <label>
+            <span>Age</span>
+            <input type="number" id="patient-age" min="0" max="110" value="45" required />
+          </label>
+        </div>
+
+        <label>
+          <span>Symptoms</span>
+          <textarea id="symptoms-input" rows="3" placeholder="e.g. chest pain, shortness of breath">chest pain, shortness of breath</textarea>
+        </label>
+
+        <div class="chip-panel">
+          <span class="meta-label">Quick symptom tags</span>
+          <div id="symptom-chip-list" class="chip-list"></div>
+        </div>
+
+        <div class="input-row three-column">
+          <label>
+            <span>Severity level</span>
+            <select id="severity-level"></select>
+          </label>
+          <label>
+            <span>Oxygen level</span>
+            <input type="number" id="oxygen-level" min="50" max="100" value="90" required />
+          </label>
+          <label>
+            <span>Heart rate</span>
+            <input type="number" id="heart-rate" min="30" max="220" value="112" required />
+          </label>
+        </div>
+
+        <div class="input-row three-column">
+          <label>
+            <span>Blood pressure</span>
+            <select id="blood-pressure-summary"></select>
+          </label>
+          <label>
+            <span>Arrival mode</span>
+            <select id="arrival-mode"></select>
+          </label>
+          <label>
+            <span>Preferred hospital</span>
+            <select id="preferred-hospital"></select>
+          </label>
+        </div>
+
+        <div class="toggle-grid">
+          <label class="toggle-card">
+            <span>Chronic condition</span>
+            <input type="checkbox" id="chronic-disease" />
+          </label>
+          <label class="toggle-card">
+            <span>Pregnancy</span>
+            <input type="checkbox" id="pregnancy" />
+          </label>
+        </div>
+
+        <label>
+          <span>Notes</span>
+          <textarea id="notes" rows="3" placeholder="Referral notes, risk context, or operational instructions"></textarea>
+        </label>
+
+        <div class="button-group dashboard-button-group">
+          <button class="btn btn-primary" id="intake-submit" type="submit">Add Patient</button>
+        </div>
+      </form>
+    </article>
+
+    <aside class="dashboard-side-column">
+      <article class="surface dashboard-panel dashboard-control-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Simulation controls</p>
+            <h2>Stress-test the hospital network</h2>
+          </div>
+        </div>
+
+        <div class="input-stack">
+          <label>
+            <span>Scenario</span>
+            <select id="surge-scenario"></select>
+          </label>
+          <div class="input-row two-column">
+            <label>
+              <span>Patient count</span>
+              <input type="number" id="random-count" min="1" max="30" value="12" />
+            </label>
+            <label>
+              <span>Origin hospital</span>
+              <select id="origin-hospital">
+                <option value="">Distributed network</option>
+              </select>
+            </label>
+          </div>
+          <p id="scenario-description" class="subcopy">
+            Load a surge scenario to force rapid reprioritization and redistribution.
+          </p>
+        </div>
+
+        <div class="action-stack dashboard-action-stack">
+          <button class="btn btn-alert" id="surge-button" type="button">Activate Surge Mode</button>
+          <button class="btn btn-secondary" id="random-button" type="button">Generate Random Patients</button>
+          <button class="btn btn-secondary" id="advance-button" type="button">Advance 30 Minutes</button>
+          <button class="btn btn-ghost" id="reset-button" type="button">Reset Simulation</button>
+        </div>
+      </article>
+    </aside>
+  </section>
+
+  <section class="dashboard-operations-grid">
+    <article class="surface dashboard-panel dashboard-queue-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Live patient queue</p>
+          <h2>Priority order and treatment status</h2>
+        </div>
+      </div>
+      <div id="patient-board" class="patient-board"></div>
+    </article>
+
+    <article class="surface dashboard-panel dashboard-decision-panel sticky-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">AI decision explanation</p>
+          <h2>Selected patient reasoning</h2>
+        </div>
+      </div>
+      <div id="selected-patient-meta" class="selected-patient-meta"></div>
+      <div id="score-breakdown" class="breakdown-list"></div>
+      <div id="decision-explanation" class="decision-copy"></div>
+    </article>
+  </section>
+
+  <section class="surface dashboard-panel dashboard-hospital-panel" data-reveal>
+    <div class="dashboard-section-head">
+      <div>
+        <p class="eyebrow">Hospital network overview</p>
+        <h2>Resource capacity across facilities</h2>
+      </div>
+    </div>
+    <div id="hospital-grid" class="hospital-grid"></div>
+  </section>
+
+  <section class="dashboard-support-grid">
+    <article class="surface dashboard-panel dashboard-summary-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Network resource summary</p>
+          <h2>System-level capacity view</h2>
+        </div>
+      </div>
+      <div id="network-summary" class="network-summary"></div>
+    </article>
+
+    <article class="surface dashboard-panel dashboard-events-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">AI decision feed</p>
+          <h2>Operational log</h2>
+        </div>
+      </div>
+      <div id="event-log" class="event-log"></div>
+    </article>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

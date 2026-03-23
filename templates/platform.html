@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="about-hero surface" data-reveal>
+    <div>
+      <p class="eyebrow">Platform Overview</p>
+      <h1>How HealHub turns hospital pressure into coordinated action</h1>
+      <p class="lead">
+        HealHub is designed as a lightweight command layer for health systems. It receives patient intake,
+        scores urgency, evaluates live capacity, and recommends the safest next move across the network.
+      </p>
+    </div>
+    <div class="about-hero-card">
+      <span class="meta-label">Core system loop</span>
+      <strong>Intake, score, prioritize, allocate, redirect, and continuously rebalance.</strong>
+      <div class="process-grid compact-process">
+        <div class="process-step compact"><span>01</span><strong>Input</strong><p>Capture symptoms and vitals.</p></div>
+        <div class="process-step compact"><span>02</span><strong>Decide</strong><p>Score urgency and assign action.</p></div>
+        <div class="process-step compact"><span>03</span><strong>Optimize</strong><p>Balance capacity across hospitals.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hero-trust-strip surface" data-reveal>
+    <div class="trust-item">
+      <span class="meta-label">Clinical layer</span>
+      <strong>Urgency scoring built from symptoms, severity, and vital instability</strong>
+    </div>
+    <div class="trust-item">
+      <span class="meta-label">Operations layer</span>
+      <strong>Resource allocation based on beds, doctors, ICU slots, and queue pressure</strong>
+    </div>
+    <div class="trust-item">
+      <span class="meta-label">Network layer</span>
+      <strong>Smart redistribution when a different hospital can deliver safer or faster care</strong>
+    </div>
+  </section>
+
+  <section class="section-block" data-reveal>
+    <div class="section-head">
+      <p class="eyebrow">System flow</p>
+      <h2>The operating model behind HealHub</h2>
+    </div>
+
+    <div class="process-grid">
+      <div class="process-step">
+        <span>01</span>
+        <strong>Intake</strong>
+        <p>Collect patient symptoms, severity, vitals, arrival mode, and risk context.</p>
+      </div>
+      <div class="process-step">
+        <span>02</span>
+        <strong>Score</strong>
+        <p>Generate an urgency score from 0-100 and assign a triage label.</p>
+      </div>
+      <div class="process-step">
+        <span>03</span>
+        <strong>Prioritize</strong>
+        <p>Rank cases by urgency, instability, and wait-time pressure.</p>
+      </div>
+      <div class="process-step">
+        <span>04</span>
+        <strong>Allocate</strong>
+        <p>Match live cases to doctors, beds, and ICU slots where possible.</p>
+      </div>
+      <div class="process-step">
+        <span>05</span>
+        <strong>Redirect</strong>
+        <p>Transfer patients when another hospital offers lower delay or better fit.</p>
+      </div>
+      <div class="process-step">
+        <span>06</span>
+        <strong>Optimize</strong>
+        <p>Continuously rebalance the system as new arrivals and surges appear.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="about-grid">
+    <article class="surface about-card" data-reveal>
+      <p class="eyebrow">AI triage scoring</p>
+      <h2>Explainable prioritization</h2>
+      <p class="subcopy">
+        HealHub combines rule-based scoring with operational weighting so every case gets a transparent urgency
+        score, triage label, and supporting breakdown.
+      </p>
+    </article>
+
+    <article class="surface about-card" data-reveal>
+      <p class="eyebrow">Resource allocation</p>
+      <h2>Scarcity-aware treatment decisions</h2>
+      <p class="subcopy">
+        The platform compares available doctors, bed capacity, ICU supply, and queue pressure before placing a
+        patient into immediate care or a monitored queue.
+      </p>
+    </article>
+
+    <article class="surface about-card" data-reveal>
+      <p class="eyebrow">Redistribution engine</p>
+      <h2>Network-level patient flow optimization</h2>
+      <p class="subcopy">
+        When a hospital is overloaded, HealHub searches for a better destination and explains the trigger,
+        whether it was ICU scarcity, doctor shortage, or excessive wait time.
+      </p>
+    </article>
+
+    <article class="surface about-card" data-reveal>
+      <p class="eyebrow">Surge simulation</p>
+      <h2>Emergency pressure testing</h2>
+      <p class="subcopy">
+        Surge mode injects realistic arrival spikes so teams can watch priorities, hospital loads, and
+        redirection decisions change in real time.
+      </p>
+    </article>
+  </section>
+
+  <section class="benefit-grid" data-reveal>
+    <article class="surface benefit-card">
+      <strong>Mass casualty response</strong>
+      <p>Shows how trauma demand can be redistributed before a single facility collapses under load.</p>
+    </article>
+    <article class="surface benefit-card">
+      <strong>Respiratory oxygen crunch</strong>
+      <p>Highlights ICU pressure and low-oxygen prioritization across multiple hospitals.</p>
+    </article>
+    <article class="surface benefit-card">
+      <strong>Maternal referrals</strong>
+      <p>Demonstrates specialty-aware routing for sensitive maternal and referral-heavy cases.</p>
+    </article>
+    <article class="surface benefit-card">
+      <strong>Routine operational mix</strong>
+      <p>Creates a realistic baseline of mixed demand for a cleaner day-to-day demo narrative.</p>
+    </article>
+  </section>
+
+  <section class="cta-band surface" data-reveal>
+    <div>
+      <p class="eyebrow">Next step</p>
+      <h2>See the platform in action</h2>
+      <p class="subcopy">Move from architecture to live simulation and show the full network reacting in real time.</p>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{{ url_for('dashboard_page') }}">Open Dashboard</a>
+      <a class="btn btn-ghost" href="{{ url_for('about_page') }}">Read the Vision</a>
+    </div>
+  </section>
+{% endblock %}

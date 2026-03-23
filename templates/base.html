@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ page_title or "HealHub" }}</title>
+    <meta
+      name="description"
+      content="HealHub is an AI-powered smart hospital operations platform for triage, resource allocation, redistribution, and surge simulation."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body class="{{ body_class or '' }}" data-page="{{ page_id or '' }}">
+    <div class="app-background" aria-hidden="true">
+      <span class="bg-orb orb-one"></span>
+      <span class="bg-orb orb-two"></span>
+      <span class="bg-grid"></span>
+    </div>
+
+    <header class="site-header">
+      <div class="shell">
+        <div class="nav-shell">
+          <a class="brand" href="{{ url_for('landing_page') }}" aria-label="HealHub home">
+            <span class="brand-mark">H</span>
+            <span class="brand-copy">
+              <strong>HealHub</strong>
+              <small>AI Health Operations</small>
+            </span>
+          </a>
+
+          <button
+            class="nav-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="primary-nav"
+            data-nav-toggle
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+          <nav class="primary-nav" id="primary-nav" aria-label="Primary navigation">
+            <a class="nav-link {% if active_page == 'home' %}active{% endif %}" href="{{ url_for('landing_page') }}">Home</a>
+            <a class="nav-link {% if active_page == 'platform' %}active{% endif %}" href="{{ url_for('platform_page') }}">Platform</a>
+            <a class="nav-link {% if active_page == 'about' %}active{% endif %}" href="{{ url_for('about_page') }}">About</a>
+            {% if not is_logged_in %}
+              <a class="nav-link {% if active_page == 'login' %}active{% endif %}" href="{{ url_for('login') }}">Login</a>
+            {% endif %}
+            <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard_page') }}">Dashboard</a>
+          </nav>
+
+          <div class="nav-actions">
+            {% if is_logged_in %}
+              <div class="identity-pill">
+                <span class="meta-label">Signed in</span>
+                <strong>{{ current_user.display_name }}</strong>
+                <small>{{ current_user.role }}</small>
+              </div>
+              <a class="btn btn-ghost" href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+              <a class="btn btn-primary" href="{{ url_for('login') }}">Launch Platform</a>
+            {% endif %}
+          </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <section class="flash-stack" aria-live="polite">
+              {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">
+                  <span class="flash-dot"></span>
+                  <span>{{ message }}</span>
+                </div>
+              {% endfor %}
+            </section>
+          {% endif %}
+        {% endwith %}
+      </div>
+    </header>
+
+    <main class="page-shell shell">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div class="footer-brand">
+          <a class="footer-home-link" href="{{ url_for('landing_page') }}">
+            <span class="eyebrow">HealHub</span>
+            <strong class="footer-title">
+              AI coordination for triage, capacity, and patient flow.
+            </strong>
+          </a>
+          <p class="footer-note">
+            Designed for real-time hospital operations in resource-constrained healthcare networks.
+          </p>
+        </div>
+
+        <nav class="footer-links" aria-label="Footer navigation">
+          <a class="footer-link-pill" href="{{ url_for('landing_page') }}">Home</a>
+          <a class="footer-link-pill" href="{{ url_for('platform_page') }}">Platform</a>
+          <a class="footer-link-pill" href="{{ url_for('about_page') }}">About</a>
+          {% if is_logged_in %}
+            <a class="footer-link-pill footer-link-pill-primary" href="{{ url_for('dashboard_page') }}">
+              Dashboard
+            </a>
+          {% else %}
+            <a class="footer-link-pill footer-link-pill-primary" href="{{ url_for('login') }}">
+              Login
+            </a>
+          {% endif %}
+        </nav>
+      </div>
+    </footer>
+
+    <script>
+      window.HealHubSession = {{ {"isLoggedIn": is_logged_in, "user": current_user} | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
