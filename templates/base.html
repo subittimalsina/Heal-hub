@@ -15,6 +15,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    {% block head %}{% endblock %}
   </head>
   <body class="{{ body_class or '' }}" data-page="{{ page_id or '' }}">
     <div class="app-background" aria-hidden="true">
@@ -50,6 +51,7 @@
             <a class="nav-link {% if active_page == 'home' %}active{% endif %}" href="{{ url_for('landing_page') }}">Home</a>
             <a class="nav-link {% if active_page == 'platform' %}active{% endif %}" href="{{ url_for('platform_page') }}">Platform</a>
             <a class="nav-link {% if active_page == 'about' %}active{% endif %}" href="{{ url_for('about_page') }}">About</a>
+            <a class="nav-link {% if active_page == 'medicine-search' %}active{% endif %}" href="{{ url_for('medicine_search_page') }}">Medicine Search</a>
             {% if not is_logged_in %}
               <a class="nav-link {% if active_page == 'login' %}active{% endif %}" href="{{ url_for('login') }}">Login</a>
             {% endif %}
@@ -107,6 +109,7 @@
           <a class="footer-link-pill" href="{{ url_for('landing_page') }}">Home</a>
           <a class="footer-link-pill" href="{{ url_for('platform_page') }}">Platform</a>
           <a class="footer-link-pill" href="{{ url_for('about_page') }}">About</a>
+          <a class="footer-link-pill" href="{{ url_for('medicine_search_page') }}">Medicine Search</a>
           {% if is_logged_in %}
             <a class="footer-link-pill footer-link-pill-primary" href="{{ url_for('dashboard_page') }}">
               Dashboard

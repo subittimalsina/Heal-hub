@@ -1342,6 +1342,17 @@ def platform_page() -> str:
     )
 
 
+@app.get("/medicine-search")
+def medicine_search_page() -> str:
+    return render_template(
+        "medicine_search.html",
+        active_page="medicine-search",
+        body_class="page-medicine-search",
+        page_id="medicine-search",
+        page_title="HealHub Medicine Search",
+    )
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login() -> Any:
     if "user" in session:
