@@ -138,7 +138,7 @@ python app.py
 
 4. Open `http://127.0.0.1:5000/`
 
-## Hackathon pitch summary
+## pitch summary
 
 **HealHub** helps healthcare systems do more with less. Instead of diagnosing disease, it focuses on what hospitals struggle with every day: who should be treated first, where they should go, and how to prevent overload when resources are scarce.
 
