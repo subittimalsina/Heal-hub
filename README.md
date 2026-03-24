@@ -1,6 +1,6 @@
 # HealHub
 
-HealHub is a polished hackathon-ready web application for the theme **"High-value health systems: leveraging Artificial Intelligence."**
+HealHub is a polished web application for the theme **"High-value health systems: leveraging Artificial Intelligence."**
 
 It is not a symptom checker. It is a **smart hospital operations and resource optimization platform** that simulates how AI can improve health system performance across multiple hospitals by:
 
