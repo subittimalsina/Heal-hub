@@ -28,7 +28,11 @@
       <div class="shell">
         <div class="nav-shell">
           <a class="brand" href="{{ url_for('landing_page') }}" aria-label="HealHub home">
-            <span class="brand-mark">H</span>
+            <img
+              class="brand-logo"
+              src="{{ url_for('static', filename='images/logo.jpg') }}"
+              alt="HealHub logo"
+            />
             <span class="brand-copy">
               <strong>HealHub</strong>
               <small>AI Health Operations</small>
@@ -51,6 +55,8 @@
             <a class="nav-link {% if active_page == 'home' %}active{% endif %}" href="{{ url_for('landing_page') }}">Home</a>
             <a class="nav-link {% if active_page == 'platform' %}active{% endif %}" href="{{ url_for('platform_page') }}">Platform</a>
             <a class="nav-link {% if active_page == 'about' %}active{% endif %}" href="{{ url_for('about_page') }}">About</a>
+            <a class="nav-link {% if active_page == 'wellness' %}active{% endif %}" href="{{ url_for('wellness_page') }}">Wellness</a>
+            <a class="nav-link {% if active_page == 'mood-check' %}active{% endif %}" href="{{ url_for('mood_check_page') }}">Mood Check</a>
             <a class="nav-link {% if active_page == 'medicine-search' %}active{% endif %}" href="{{ url_for('medicine_search_page') }}">Medicine Search</a>
             {% if not is_logged_in %}
               <a class="nav-link {% if active_page == 'login' %}active{% endif %}" href="{{ url_for('login') }}">Login</a>

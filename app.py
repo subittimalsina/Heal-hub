@@ -205,6 +205,67 @@ def safe_next_url(target: str | None) -> str | None:
     return None
 
 
+def build_mood_check_result(
+    feeling: str,
+    stress_level: int,
+    sleep_hours: float,
+    energy_level: str,
+) -> dict[str, Any]:
+    actions: list[str] = []
+
+    if stress_level >= 4:
+        actions.append("Take five quiet minutes for breathing, meditation, or a short reset.")
+
+    if sleep_hours < 6:
+        actions.append("Protect your next sleep window and keep the rest of the day lighter.")
+
+    if energy_level == "low":
+        actions.append("Prioritize hydration, a simple meal, and gentle movement instead of heavy tasks.")
+    elif energy_level == "high":
+        actions.append("Use the extra energy for a steady walk or another calming routine that keeps momentum going.")
+
+    if feeling in {"anxious", "overwhelmed", "sad", "lonely"}:
+        actions.append("Reach out to someone you trust and avoid carrying the day on your own.")
+    elif feeling in {"calm", "hopeful", "good"}:
+        actions.append("Keep the routines that are already helping you feel stable today.")
+
+    if not actions:
+        actions.append("Keep a balanced rhythm today with water, meals, movement, and a short check-in tonight.")
+
+    if stress_level >= 4 or sleep_hours < 5 or energy_level == "low":
+        title = "Take a gentler recovery day."
+        summary = (
+            "Your check-in suggests that recovery support matters today. Aim for lower stress,"
+            " better rest, and simple routines that help you settle."
+        )
+        tone = "warning"
+        status_label = "Needs reset"
+    elif stress_level <= 2 and sleep_hours >= 7 and energy_level in {"steady", "high"}:
+        title = "You are in a strong recovery zone."
+        summary = (
+            "Your signals look fairly balanced today. Keep the habits that are supporting your"
+            " mood, sleep, and energy."
+        )
+        tone = "stable"
+        status_label = "Well balanced"
+    else:
+        title = "A small reset could help today."
+        summary = (
+            "Your check-in looks mixed, which is normal. A few supportive routines can help you"
+            " stay steady without overloading yourself."
+        )
+        tone = "neutral"
+        status_label = "Moderate load"
+
+    return {
+        "title": title,
+        "summary": summary,
+        "tone": tone,
+        "status_label": status_label,
+        "actions": actions,
+    }
+
+
 class HealHubEngine:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -1350,6 +1411,68 @@ def medicine_search_page() -> str:
         body_class="page-medicine-search",
         page_id="medicine-search",
         page_title="HealHub Medicine Search",
+    )
+
+
+@app.get("/wellness")
+def wellness_page() -> str:
+    return render_template(
+        "wellness.html",
+        active_page="wellness",
+        body_class="page-wellness",
+        page_id="wellness",
+        page_title="HealHub Wellness",
+    )
+
+
+@app.route("/mood-check", methods=["GET", "POST"])
+def mood_check_page() -> str:
+    form_values = {
+        "feeling": "calm",
+        "stress_level": 3,
+        "sleep_hours": 7,
+        "energy_level": "steady",
+    }
+    mood_result: dict[str, Any] | None = None
+
+    if request.method == "POST":
+        feeling = str(request.form.get("feeling", "calm")).strip().lower() or "calm"
+        energy_level = str(request.form.get("energy_level", "steady")).strip().lower() or "steady"
+
+        try:
+            stress_level = int(request.form.get("stress_level", 3))
+        except (TypeError, ValueError):
+            stress_level = 3
+
+        try:
+            sleep_hours = float(request.form.get("sleep_hours", 7))
+        except (TypeError, ValueError):
+            sleep_hours = 7.0
+
+        stress_level = int(clamp(stress_level, 1, 5))
+        sleep_hours = float(clamp(sleep_hours, 0, 24))
+
+        form_values = {
+            "feeling": feeling,
+            "stress_level": stress_level,
+            "sleep_hours": sleep_hours,
+            "energy_level": energy_level,
+        }
+        mood_result = build_mood_check_result(
+            feeling=feeling,
+            stress_level=stress_level,
+            sleep_hours=sleep_hours,
+            energy_level=energy_level,
+        )
+
+    return render_template(
+        "mood_check.html",
+        active_page="mood-check",
+        body_class="page-mood-check",
+        page_id="mood-check",
+        page_title="HealHub Mood Check",
+        form_values=form_values,
+        mood_result=mood_result,
     )
 
 
