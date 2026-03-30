@@ -2796,7 +2796,10 @@ def build_patient_dashboard_context(user: dict[str, Any]) -> dict[str, Any]:
     ai_summary = ai_triage_summary(["chest pain", "shortness of breath"])
     movie_profile = build_movie_profile(username)
     community_profile = build_community_profile(username)
-    bookings = [booking for booking in BOOKINGS_DATA if booking.get("patient_username") == username]
+    bookings = sorted(
+        [booking for booking in BOOKINGS_DATA if booking.get("patient_username") == username],
+        key=lambda booking: (booking.get("date", ""), booking.get("time", "")),
+    )
     latest_booking = bookings[0] if bookings else None
     quick_actions = [
         {"label": "Explore healing movies", "href": url_for("movies_page")},
