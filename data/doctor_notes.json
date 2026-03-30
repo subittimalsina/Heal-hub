@@ -1,0 +1,14 @@
+[
+  {
+    "id": "note-001",
+    "patient_username": "patient",
+    "doctor_username": "doctor",
+    "note": "BP still fluctuates. Continue adherence coaching and maintain low-salt diet.",
+    "risk_level": "high",
+    "diagnosis_tags": [
+      "cardiovascular",
+      "diabetes_risk"
+    ],
+    "created_at": "2026-03-25 09:15"
+  }
+]

@@ -4,7 +4,7 @@ import copy
 import json
 import random
 import threading
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
 from statistics import mean
@@ -20,6 +20,7 @@ from flask import (
     session,
     url_for,
 )
+from uuid import uuid4
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -148,19 +149,196 @@ DEMO_USERS: dict[str, dict[str, str]] = {
     "admin": {
         "password": "admin123",
         "display_name": "Admin Control",
-        "role": "System Administrator",
+        "role": "admin",
+        "headline": "System Administrator",
     },
     "doctor": {
         "password": "doctor123",
         "display_name": "Dr. Sharma",
-        "role": "Clinical Operations Lead",
+        "role": "doctor",
+        "headline": "Clinical Operations Lead",
     },
+    "patient": {
+        "password": "patient123",
+        "display_name": "Aasha G.",
+        "role": "patient",
+        "headline": "Patient Portal",
+    },
+}
+LOGIN_ENABLED_USERNAMES = ("patient", "doctor")
+
+PRESCRIPTIONS_PATH = DATA_DIR / "prescriptions.json"
+DOCTOR_NOTES_PATH = DATA_DIR / "doctor_notes.json"
+
+PORTAL_PATIENTS: dict[str, dict[str, Any]] = {
+    "patient": {
+        "id": "patient-aasha",
+        "username": "patient",
+        "display_name": "Aasha G.",
+        "age": 74,
+        "doctor_name": "Dr. Sharma",
+        "doctor_username": "doctor",
+        "hospital": "Kathmandu General Hospital",
+        "primary_track": "cardiovascular",
+        "risk_label": "Elevated cardiometabolic risk",
+        "summary": "Needs close BP and glucose monitoring with medication adherence support.",
+        "next_follow_up": "2026-04-05",
+        "conditions": ["Hypertension", "Type 2 diabetes risk", "Shortness of breath history"],
+        "care_goals": [
+            "Keep blood pressure stable",
+            "Support medication adherence",
+            "Escalate quickly if chest symptoms return",
+        ],
+    }
 }
 
 
 def load_json(path: Path) -> Any:
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
+
+
+def save_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2)
+
+
+def load_records(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    with path.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def seed_portal_records() -> None:
+    if not PRESCRIPTIONS_PATH.exists():
+        save_json(
+            PRESCRIPTIONS_PATH,
+            [
+                {
+                    "id": "rx-001",
+                    "patient_username": "patient",
+                    "doctor_username": "doctor",
+                    "doctor_name": "Dr. Sharma",
+                    "medicine_name": "Amlodipine",
+                    "dosage": "5 mg",
+                    "frequency": "Once daily",
+                    "duration": "30 days",
+                    "purpose": "Blood pressure support",
+                    "instructions": "Take after breakfast and track BP twice weekly.",
+                    "warnings": "Seek urgent care if chest pain worsens or fainting occurs.",
+                    "refill_status": "Refill due in 12 days",
+                    "created_at": "2026-03-25 09:10",
+                },
+                {
+                    "id": "rx-002",
+                    "patient_username": "patient",
+                    "doctor_username": "doctor",
+                    "doctor_name": "Dr. Sharma",
+                    "medicine_name": "Metformin",
+                    "dosage": "500 mg",
+                    "frequency": "Twice daily",
+                    "duration": "30 days",
+                    "purpose": "Glucose control",
+                    "instructions": "Take with meals and hydrate well.",
+                    "warnings": "Pause and seek review if severe vomiting or dehydration occurs.",
+                    "refill_status": "In active cycle",
+                    "created_at": "2026-03-24 17:45",
+                },
+            ],
+        )
+    if not DOCTOR_NOTES_PATH.exists():
+        save_json(
+            DOCTOR_NOTES_PATH,
+            [
+                {
+                    "id": "note-001",
+                    "patient_username": "patient",
+                    "doctor_username": "doctor",
+                    "note": "BP still fluctuates. Continue adherence coaching and maintain low-salt diet.",
+                    "risk_level": "high",
+                    "diagnosis_tags": ["cardiovascular", "diabetes_risk"],
+                    "created_at": "2026-03-25 09:15",
+                }
+            ],
+        )
+
+
+def portal_patient_for_user(user: dict[str, Any] | None) -> dict[str, Any]:
+    if not user:
+        return PORTAL_PATIENTS["patient"]
+    return PORTAL_PATIENTS.get(user.get("username", ""), PORTAL_PATIENTS["patient"])
+
+
+def patient_prescriptions(username: str) -> list[dict[str, Any]]:
+    prescriptions = load_records(PRESCRIPTIONS_PATH)
+    items = [item for item in prescriptions if item.get("patient_username") == username]
+    return sorted(items, key=lambda item: item.get("created_at", ""), reverse=True)
+
+
+def patient_notes(username: str) -> list[dict[str, Any]]:
+    notes = load_records(DOCTOR_NOTES_PATH)
+    items = [item for item in notes if item.get("patient_username") == username]
+    return sorted(items, key=lambda item: item.get("created_at", ""), reverse=True)
+
+
+def ai_triage_summary(symptoms: list[str]) -> dict[str, Any]:
+    lowered = [item.lower() for item in symptoms]
+    track = "general wellness"
+    urgency = "Routine review"
+    guidance = ["Keep symptoms logged and monitor for change."]
+
+    if any(term in lowered for term in ["chest pain", "shortness of breath"]):
+        track = "cardiovascular and diabetes"
+        urgency = "Prompt clinical review"
+        guidance = [
+            "Check blood pressure, pulse, and oxygen level promptly.",
+            "Escalate urgently if chest pain is severe, persistent, or paired with fainting.",
+        ]
+    elif any(term in lowered for term in ["fever", "cough", "sepsis signs"]):
+        track = "infectious disease"
+        urgency = "Rapid assessment"
+        guidance = [
+            "Review fever duration, respiratory symptoms, and exposure history.",
+            "Use isolation precautions if symptoms suggest a transmissible infection.",
+        ]
+    elif any(term in lowered for term in ["mental distress"]):
+        track = "mental health"
+        urgency = "Supportive follow-up"
+        guidance = [
+            "Ask about sleep, stress load, and immediate safety concerns.",
+            "Offer clinician review if distress is escalating or persistent.",
+        ]
+
+    return {
+        "track": track,
+        "urgency": urgency,
+        "guidance": guidance,
+        "disclaimer": "Heal Hub AI highlights risk patterns and next-step guidance only. It does not provide a diagnosis.",
+    }
+
+
+def build_ai_agent_result(symptom_text: str) -> dict[str, Any]:
+    symptoms = split_symptoms(symptom_text)
+    summary = ai_triage_summary(symptoms)
+    return {
+        "symptoms": symptoms,
+        "summary": summary,
+        "headline": f"Likely priority track: {summary['track'].title()}",
+    }
+
+
+def role_dashboard_endpoint(user: dict[str, Any]) -> str:
+    role = user.get("role")
+    if role == "doctor":
+        return "doctor_dashboard_page"
+    if role == "patient":
+        return "patient_dashboard_page"
+    return "dashboard_page"
+
+
+seed_portal_records()
 
 
 def clock_label(total_minutes: int) -> str:
@@ -290,7 +468,7 @@ class HealHubEngine:
             self.events = []
             self._log_event(
                 kind="system",
-                title="HealHub command layer initialized",
+                title="Heal Hub command layer initialized",
                 detail="The AI coordination engine has been reset for a fresh hospital operations demo.",
                 tone="neutral",
             )
@@ -345,7 +523,7 @@ class HealHubEngine:
                 ),
                 detail=(
                     f"{count} new arrivals were injected into the network. "
-                    "HealHub re-ranked urgency, treatment order, and transfer recommendations instantly."
+                    "Heal Hub re-ranked urgency, treatment order, and transfer recommendations instantly."
                 ),
                 tone="critical" if surge else "warning",
             )
@@ -782,7 +960,7 @@ class HealHubEngine:
             "arrival_mode": self._rng.choice(scenario["arrival_modes"]),
             "chronic_disease": self._rng.random() < 0.35,
             "pregnancy": pregnancy,
-            "notes": "Synthetic simulation patient generated by HealHub.",
+            "notes": "Synthetic simulation patient generated by Heal Hub.",
             "preferred_hospital": origin_hospital
             or self._rng.choice([hospital["id"] for hospital in self._hospital_blueprints]),
         }
@@ -995,16 +1173,16 @@ class HealHubEngine:
             )
         if immediate:
             return (
-                f"{hospital['name']} has capacity right now, so HealHub escalated the patient directly into treatment."
+                f"{hospital['name']} has capacity right now, so Heal Hub escalated the patient directly into treatment."
             )
         if patient["route_mode"] == "redirect":
             return (
-                f"HealHub recommends queueing at {hospital['name']} because the preferred site is constrained "
+                f"Heal Hub recommends queueing at {hospital['name']} because the preferred site is constrained "
                 f"by {preferred_reason}, and this option reduces system-level congestion."
             )
         return (
             f"{hospital['name']} remains the best fit, but no immediate slot is free. "
-            "HealHub keeps the patient in a monitored queue and rechecks capacity continuously."
+            "Heal Hub keeps the patient in a monitored queue and rechecks capacity continuously."
         )
 
     def _resource_reasoning(
@@ -1221,7 +1399,7 @@ class HealHubEngine:
                     "tone": "warning",
                     "title": f"{hottest['name']} is near saturation",
                     "body": (
-                        f"Utilization has reached {hottest['utilization']}%, so HealHub is likely "
+                        f"Utilization has reached {hottest['utilization']}%, so Heal Hub is likely "
                         "to redirect medium-acuity arrivals away from this facility."
                     ),
                 }
@@ -1261,7 +1439,7 @@ class HealHubEngine:
                 {
                     "tone": "stable",
                     "title": "No urgent capacity risk detected",
-                    "body": "HealHub is keeping hospital workloads balanced at the moment.",
+                    "body": "Heal Hub is keeping hospital workloads balanced at the moment.",
                 }
             )
 
@@ -1366,7 +1544,7 @@ def login_required(view: Any) -> Any:
                     ),
                     401,
                 )
-            flash("Please log in to access the HealHub dashboard.", "error")
+            flash("Please log in to access the Heal Hub dashboard.", "error")
             return redirect(url_for("login", next=request.path))
         return view(*args, **kwargs)
 
@@ -1378,6 +1556,17 @@ def inject_template_state() -> dict[str, Any]:
     return {
         "current_user": session.get("user"),
         "is_logged_in": "user" in session,
+        "demo_users": [
+            {
+                "username": username,
+                "password": user["password"],
+                "display_name": user["display_name"],
+                "role": user["role"],
+                "headline": user.get("headline", user["role"].title()),
+            }
+            for username in LOGIN_ENABLED_USERNAMES
+            for user in [DEMO_USERS[username]]
+        ],
     }
 
 
@@ -1388,18 +1577,36 @@ def landing_page() -> str:
         active_page="home",
         body_class="page-landing",
         page_id="home",
-        page_title="HealHub | AI-Powered Smart Health Systems",
+        page_title="Heal Hub | Stories, Support, and Smarter Care",
+        platform_snapshot=build_platform_snapshot(),
+        featured_movies=MOVIES_DATA[:4],
+        featured_therapists=THERAPISTS_DATA[:3],
+        featured_groups=COMMUNITY_GROUPS[:3],
+        featured_safety_cards=SAFETY_CARDS[:3],
     )
 
 
 @app.get("/platform")
-def platform_page() -> str:
+def platform_page() -> Any:
+    return redirect(url_for("landing_page"))
+
+
+@app.route("/ai-agent", methods=["GET", "POST"])
+def ai_agent_page() -> str:
+    symptom_text = ""
+    agent_result: dict[str, Any] | None = None
+    if request.method == "POST":
+        symptom_text = request.form.get("symptoms", "").strip()
+        if symptom_text:
+            agent_result = build_ai_agent_result(symptom_text)
     return render_template(
-        "platform.html",
-        active_page="platform",
-        body_class="page-platform",
-        page_id="platform",
-        page_title="HealHub Platform",
+        "ai_agent.html",
+        active_page="ai-agent",
+        body_class="page-ai-agent",
+        page_id="ai-agent",
+        page_title="Heal Hub AI Agent",
+        symptom_text=symptom_text,
+        agent_result=agent_result,
     )
 
 
@@ -1410,7 +1617,7 @@ def medicine_search_page() -> str:
         active_page="medicine-search",
         body_class="page-medicine-search",
         page_id="medicine-search",
-        page_title="HealHub Medicine Search",
+        page_title="Heal Hub Medicine Search",
     )
 
 
@@ -1421,7 +1628,7 @@ def wellness_page() -> str:
         active_page="wellness",
         body_class="page-wellness",
         page_id="wellness",
-        page_title="HealHub Wellness",
+        page_title="Heal Hub Wellness",
     )
 
 
@@ -1470,7 +1677,7 @@ def mood_check_page() -> str:
         active_page="mood-check",
         body_class="page-mood-check",
         page_id="mood-check",
-        page_title="HealHub Mood Check",
+        page_title="Heal Hub Mood Check",
         form_values=form_values,
         mood_result=mood_result,
     )
@@ -1479,30 +1686,42 @@ def mood_check_page() -> str:
 @app.route("/login", methods=["GET", "POST"])
 def login() -> Any:
     if "user" in session:
-        return redirect(url_for("dashboard_page"))
+        existing_user = session["user"]
+        if existing_user.get("role") in {"doctor", "patient"}:
+            return redirect(url_for(role_dashboard_endpoint(existing_user)))
+        session.pop("user", None)
+        flash("Previous session was cleared. Please sign in again.", "info")
 
     next_url = safe_next_url(request.args.get("next")) or safe_next_url(request.form.get("next"))
+    enabled_demo_users = {username: DEMO_USERS[username] for username in LOGIN_ENABLED_USERNAMES}
 
     if request.method == "POST":
-        if request.form.get("demo_login"):
-            username = "admin"
-            password = DEMO_USERS["admin"]["password"]
+        selected_role = request.form.get("role", "patient").strip().lower() or "patient"
+        if selected_role not in enabled_demo_users:
+            flash("Only patient and doctor login are enabled right now.", "error")
         else:
-            username = request.form.get("username", "").strip().lower()
-            password = request.form.get("password", "")
+            if request.form.get("demo_login"):
+                username = selected_role
+                password = enabled_demo_users[username]["password"]
+            else:
+                username = request.form.get("username", "").strip().lower()
+                password = request.form.get("password", "")
 
-        user = DEMO_USERS.get(username)
-        if user and user["password"] == password:
-            session.permanent = bool(request.form.get("remember_me"))
-            session["user"] = {
-                "username": username,
-                "display_name": user["display_name"],
-                "role": user["role"],
-            }
-            flash(f"Welcome to HealHub, {user['display_name']}.", "success")
-            return redirect(next_url or url_for("dashboard_page"))
+            user = enabled_demo_users.get(username)
+            if user and user["password"] == password and user["role"] == selected_role:
+                session.permanent = bool(request.form.get("remember_me"))
+                session["user"] = {
+                    "username": username,
+                    "display_name": user["display_name"],
+                    "role": user["role"],
+                    "headline": user.get("headline", user["role"].title()),
+                }
+                flash(f"Welcome to Heal Hub, {user['display_name']}.", "success")
+                if next_url:
+                    return redirect(next_url)
+                return redirect(url_for(role_dashboard_endpoint(session["user"])))
 
-        flash("Invalid username or password. Try the demo login if needed.", "error")
+            flash("Invalid username, password, or role combination. Use one of the doctor or patient demo accounts shown below.", "error")
 
     return render_template(
         "login.html",
@@ -1510,16 +1729,7 @@ def login() -> Any:
         body_class="page-auth",
         page_id="login",
         next_url=next_url or "",
-        demo_users=[
-            {
-                "username": username,
-                "password": user["password"],
-                "display_name": user["display_name"],
-                "role": user["role"],
-            }
-            for username, user in DEMO_USERS.items()
-        ],
-        page_title="HealHub Login",
+        page_title="Heal Hub Login",
     )
 
 
@@ -1532,13 +1742,74 @@ def logout() -> Any:
 
 @app.get("/dashboard")
 @login_required
-def dashboard_page() -> str:
+def dashboard_page() -> Any:
+    user = session.get("user", {})
+    if user.get("role") == "doctor":
+        return redirect(url_for("doctor_dashboard_page"))
+    if user.get("role") == "patient":
+        return redirect(url_for("patient_dashboard_page"))
+    session.pop("user", None)
+    flash("Please sign in as a patient or doctor.", "info")
+    return redirect(url_for("login"))
+
+
+@app.route("/doctor/dashboard", methods=["GET", "POST"])
+@login_required
+def doctor_dashboard_page() -> Any:
+    user = session.get("user", {})
+    if user.get("role") != "doctor":
+        flash("Doctor access is required for that page.", "error")
+        return redirect(url_for("dashboard_page"))
+
+    if request.method == "POST":
+        patient_username = request.form.get("patient_username", "patient").strip() or "patient"
+        prescriptions = load_records(PRESCRIPTIONS_PATH)
+        prescriptions.insert(0, {
+            "id": f"rx-{int(datetime.utcnow().timestamp())}",
+            "patient_username": patient_username,
+            "doctor_username": user.get("username"),
+            "doctor_name": user.get("display_name"),
+            "medicine_name": request.form.get("medicine_name", "").strip(),
+            "dosage": request.form.get("dosage", "").strip(),
+            "frequency": request.form.get("frequency", "").strip(),
+            "duration": request.form.get("duration", "").strip(),
+            "purpose": request.form.get("purpose", "").strip(),
+            "instructions": request.form.get("instructions", "").strip(),
+            "warnings": request.form.get("warnings", "").strip(),
+            "refill_status": request.form.get("refill_status", "In active cycle").strip(),
+            "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        })
+        save_json(PRESCRIPTIONS_PATH, prescriptions)
+        flash("Prescription added to the patient portal.", "success")
+        return redirect(url_for("doctor_dashboard_page"))
+
+    dashboard_context = build_doctor_dashboard_context(user)
     return render_template(
-        "dashboard.html",
+        "doctor_dashboard.html",
         active_page="dashboard",
         body_class="page-dashboard",
-        page_id="dashboard",
-        page_title="HealHub Dashboard",
+        page_id="doctor-dashboard",
+        page_title="Doctor Dashboard",
+        **dashboard_context,
+    )
+
+
+@app.get("/patient/dashboard")
+@login_required
+def patient_dashboard_page() -> Any:
+    user = session.get("user", {})
+    if user.get("role") != "patient":
+        flash("Patient access is required for that page.", "error")
+        return redirect(url_for("dashboard_page"))
+
+    dashboard_context = build_patient_dashboard_context(user)
+    return render_template(
+        "patient_dashboard.html",
+        active_page="dashboard",
+        body_class="page-dashboard",
+        page_id="patient-dashboard",
+        page_title="Patient Dashboard",
+        **dashboard_context,
     )
 
 
@@ -1549,7 +1820,7 @@ def about_page() -> str:
         active_page="about",
         body_class="page-about",
         page_id="about",
-        page_title="About HealHub",
+        page_title="About Heal Hub",
     )
 
 
@@ -1636,6 +1907,1040 @@ def reset() -> Any:
     state = engine.reset(seed_demo=True)
     return jsonify({"success": True, "message": "Simulation reset.", "state": state})
 
+
+# ═══════════════════════════════════════════════════════════════
+# PART 2 — HEALING MOVIES & SERIES
+# ═══════════════════════════════════════════════════════════════
+
+MOVIES_DATA: list[dict[str, Any]] = [
+    {
+        "id": "mov-001", "title": "Inside Out 2", "type": "movie",
+        "genre": "Animation, Family", "year": 2024,
+        "categories": ["inner child", "mental wellness", "self-growth"],
+        "description": "Riley navigates new emotions as she enters her teenage years, discovering that growing up means embracing complexity.",
+        "why_helps": "Helps viewers understand and accept complex emotions, showing that all feelings have value in our personal growth journey.",
+        "mood_tags": ["emotional awareness", "self-acceptance", "growing up"],
+        "poster_emoji": "🧠",
+    },
+    {
+        "id": "mov-002", "title": "Soul", "type": "movie",
+        "genre": "Animation, Drama", "year": 2020,
+        "categories": ["inspiration", "self-growth", "healing"],
+        "description": "A music teacher discovers what it truly means to have a soul and finds purpose beyond achievement.",
+        "why_helps": "Reminds us that life's meaning comes from everyday moments, not just big accomplishments. Perfect for anyone feeling lost or purposeless.",
+        "mood_tags": ["purpose", "mindfulness", "joy"],
+        "poster_emoji": "🎵",
+    },
+    {
+        "id": "mov-003", "title": "The Pursuit of Happyness", "type": "movie",
+        "genre": "Drama, Biography", "year": 2006,
+        "categories": ["motivation", "life struggles", "inspiration"],
+        "description": "A struggling salesman takes custody of his son as he battles homelessness while pursuing a career as a stockbroker.",
+        "why_helps": "A powerful story of resilience and determination that shows how persistence through hardship can lead to transformation.",
+        "mood_tags": ["resilience", "hope", "determination"],
+        "poster_emoji": "💪",
+    },
+    {
+        "id": "mov-004", "title": "Little Women", "type": "movie",
+        "genre": "Drama, Romance", "year": 2019,
+        "categories": ["women empowerment", "friendship", "self-growth"],
+        "description": "Four sisters come of age in America during the Civil War era, each finding their own path in a world that limits women.",
+        "why_helps": "Celebrates female ambition, sisterhood, and the courage to define your own life on your own terms.",
+        "mood_tags": ["empowerment", "sisterhood", "courage"],
+        "poster_emoji": "📖",
+    },
+    {
+        "id": "mov-005", "title": "Good Will Hunting", "type": "movie",
+        "genre": "Drama", "year": 1997,
+        "categories": ["healing", "mental wellness", "self-growth"],
+        "description": "A janitor at MIT has a gift for mathematics but needs help from a psychologist to find direction in life.",
+        "why_helps": "Shows the transformative power of therapy and human connection in overcoming childhood trauma and self-sabotage.",
+        "mood_tags": ["therapy", "vulnerability", "breakthrough"],
+        "poster_emoji": "🍎",
+    },
+    {
+        "id": "mov-006", "title": "Coco", "type": "movie",
+        "genre": "Animation, Family", "year": 2017,
+        "categories": ["inner child", "healing", "friendship"],
+        "description": "A young boy journeys to the Land of the Dead to discover the truth about his family's history and his own dreams.",
+        "why_helps": "A beautiful exploration of family bonds, memory, and following your passion even when others disapprove.",
+        "mood_tags": ["family", "memory", "passion"],
+        "poster_emoji": "🎸",
+    },
+    {
+        "id": "mov-007", "title": "Wild", "type": "movie",
+        "genre": "Drama, Adventure", "year": 2014,
+        "categories": ["healing", "self-growth", "women empowerment"],
+        "description": "A woman hikes the Pacific Crest Trail alone to recover from personal tragedy and self-destructive behavior.",
+        "why_helps": "Demonstrates how physical challenge and solitude can become powerful tools for emotional healing and self-discovery.",
+        "mood_tags": ["healing journey", "nature", "self-discovery"],
+        "poster_emoji": "🥾",
+    },
+    {
+        "id": "mov-008", "title": "The Secret Life of Walter Mitty", "type": "movie",
+        "genre": "Adventure, Comedy", "year": 2013,
+        "categories": ["inspiration", "motivation", "self-growth"],
+        "description": "A daydreamer embarks on a real-world adventure that surpasses anything he could have imagined.",
+        "why_helps": "Inspires viewers to step out of their comfort zone and live the adventures they've only dreamed about.",
+        "mood_tags": ["adventure", "courage", "living fully"],
+        "poster_emoji": "🌍",
+    },
+    {
+        "id": "mov-009", "title": "Ted Lasso", "type": "series",
+        "genre": "Comedy, Drama", "year": 2020,
+        "categories": ["motivation", "friendship", "mental wellness"],
+        "description": "An American football coach is hired to manage a British soccer team despite having no experience, winning hearts with optimism.",
+        "why_helps": "Shows how kindness, vulnerability, and genuine care for others can transform toxic environments into supportive communities.",
+        "mood_tags": ["kindness", "optimism", "team spirit"],
+        "poster_emoji": "⚽",
+    },
+    {
+        "id": "mov-010", "title": "Maid", "type": "series",
+        "genre": "Drama", "year": 2021,
+        "categories": ["women empowerment", "life struggles", "motivation"],
+        "description": "A young mother escapes an abusive relationship and works as a house cleaner to provide for her daughter.",
+        "why_helps": "A raw, honest portrayal of survival and strength that validates the struggles of women rebuilding their lives.",
+        "mood_tags": ["survival", "strength", "motherhood"],
+        "poster_emoji": "🏠",
+    },
+    {
+        "id": "mov-011", "title": "Heartstopper", "type": "series",
+        "genre": "Romance, Drama", "year": 2022,
+        "categories": ["friendship", "inner child", "self-growth"],
+        "description": "Two British teens discover their unlikely friendship might be something more, navigating identity and acceptance.",
+        "why_helps": "A gentle, affirming story about self-acceptance, true friendship, and the courage to be yourself.",
+        "mood_tags": ["acceptance", "identity", "gentle love"],
+        "poster_emoji": "💛",
+    },
+    {
+        "id": "mov-012", "title": "Forrest Gump", "type": "movie",
+        "genre": "Drama, Romance", "year": 1994,
+        "categories": ["inspiration", "life struggles", "healing"],
+        "description": "A man with a low IQ accomplishes great things in life while his true love eludes him.",
+        "why_helps": "Teaches that kindness, simplicity, and perseverance matter more than intelligence or status.",
+        "mood_tags": ["simplicity", "perseverance", "love"],
+        "poster_emoji": "🏃",
+    },
+    {
+        "id": "mov-013", "title": "Encanto", "type": "movie",
+        "genre": "Animation, Musical", "year": 2021,
+        "categories": ["inner child", "healing", "friendship"],
+        "description": "A young Colombian woman discovers that being the only 'ordinary' member of her magical family might be her greatest strength.",
+        "why_helps": "Explores family pressure, generational trauma, and the healing power of being seen for who you truly are.",
+        "mood_tags": ["family healing", "self-worth", "belonging"],
+        "poster_emoji": "🦋",
+    },
+    {
+        "id": "mov-014", "title": "A Beautiful Mind", "type": "movie",
+        "genre": "Drama, Biography", "year": 2001,
+        "categories": ["mental wellness", "motivation", "healing"],
+        "description": "The story of mathematician John Nash and his struggle with schizophrenia while making groundbreaking contributions.",
+        "why_helps": "Destigmatizes mental health challenges and shows that brilliance and vulnerability can coexist.",
+        "mood_tags": ["mental health", "genius", "love"],
+        "poster_emoji": "🧮",
+    },
+    {
+        "id": "mov-015", "title": "Eat Pray Love", "type": "movie",
+        "genre": "Drama, Romance", "year": 2010,
+        "categories": ["self-growth", "healing", "women empowerment"],
+        "description": "After a painful divorce, a woman travels the world to rediscover herself through food, spirituality, and love.",
+        "why_helps": "Encourages taking time for self-discovery and shows that healing often requires stepping away from the familiar.",
+        "mood_tags": ["self-discovery", "travel", "renewal"],
+        "poster_emoji": "🌺",
+    },
+    {
+        "id": "mov-016", "title": "It's Okay to Not Be Okay", "type": "series",
+        "genre": "Romance, Drama", "year": 2020,
+        "categories": ["mental wellness", "healing", "friendship"],
+        "description": "A psychiatric ward caretaker and a children's book author with antisocial personality disorder heal each other's emotional wounds.",
+        "why_helps": "Beautifully normalizes mental health struggles and shows that healing happens through genuine human connection.",
+        "mood_tags": ["mental health", "connection", "healing"],
+        "poster_emoji": "🌙",
+    },
+]
+
+# In-memory user movie interactions (for demo)
+USER_MOVIE_DATA: dict[str, dict[str, Any]] = {
+    "patient": {
+        "watched": ["mov-001", "mov-002", "mov-006", "mov-009", "mov-013"],
+        "want_to_watch": ["mov-003", "mov-007", "mov-015"],
+        "favorites": ["mov-002", "mov-006", "mov-013"],
+        "interests": ["healing", "inner child", "self-growth", "mental wellness"],
+        "history": [
+            {
+                "movie_id": "mov-013",
+                "watched_on": "2026-03-28",
+                "reflection": "This helped me feel less alone in family pressure and reminded me that softness is still strength.",
+                "mood_after": "belonging",
+            },
+            {
+                "movie_id": "mov-009",
+                "watched_on": "2026-03-25",
+                "reflection": "The kindness in this story gave me a hopeful reset after a heavy week.",
+                "mood_after": "optimism",
+            },
+            {
+                "movie_id": "mov-002",
+                "watched_on": "2026-03-21",
+                "reflection": "It helped me slow down and remember that purpose can live inside ordinary moments.",
+                "mood_after": "calm",
+            },
+        ],
+        "check_in": "Looking for stories that feel healing, hopeful, and gently energizing.",
+    }
+}
+
+MOVIE_CATEGORIES = [
+    "motivation", "healing", "self-growth", "inner child", "friendship",
+    "women empowerment", "life struggles", "mental wellness", "inspiration",
+]
+
+
+@app.get("/movies")
+def movies_page() -> str:
+    category = request.args.get("category", "").strip().lower()
+    search_q = request.args.get("q", "").strip().lower()
+    filtered = MOVIES_DATA
+    if category:
+        filtered = [m for m in filtered if category in m["categories"]]
+    if search_q:
+        filtered = [m for m in filtered if search_q in m["title"].lower() or search_q in m["description"].lower()]
+
+    user = session.get("user")
+    user_data = {}
+    movie_profile = None
+    if user:
+        username = user.get("username", "")
+        user_data = ensure_user_movie_profile(username)
+        movie_profile = build_movie_profile(username)
+
+    return render_template(
+        "movies.html",
+        active_page="movies",
+        body_class="page-movies",
+        page_id="movies",
+        page_title="Healing Through Stories | Heal Hub",
+        movies=filtered,
+        categories=MOVIE_CATEGORIES,
+        selected_category=category,
+        search_q=search_q,
+        user_movie_data=user_data,
+        movie_profile=movie_profile,
+        mood_match=movie_profile["mood_match"] if movie_profile else MOVIES_DATA[0],
+        featured_story_arc=filtered[:3],
+    )
+
+
+@app.post("/api/movie-action")
+@login_required
+def movie_action() -> Any:
+    user = session.get("user", {})
+    username = user.get("username", "patient")
+    payload = request.get_json(silent=True) or {}
+    movie_id = payload.get("movie_id", "")
+    action = payload.get("action", "")  # watched, want_to_watch, favorite, remove
+
+    data = ensure_user_movie_profile(username)
+
+    if action == "watched":
+        if movie_id not in data["watched"]:
+            data["watched"].append(movie_id)
+        append_watch_history(data, movie_id)
+        if movie_id in data["want_to_watch"]:
+            data["want_to_watch"].remove(movie_id)
+    elif action == "want_to_watch":
+        if movie_id not in data["want_to_watch"]:
+            data["want_to_watch"].append(movie_id)
+    elif action == "favorite":
+        if movie_id not in data["favorites"]:
+            data["favorites"].append(movie_id)
+        if movie_id not in data["watched"]:
+            data["watched"].append(movie_id)
+        append_watch_history(data, movie_id)
+    elif action == "remove":
+        for lst in [data["watched"], data["want_to_watch"], data["favorites"]]:
+            if movie_id in lst:
+                lst.remove(movie_id)
+        data["history"] = [
+            item for item in data.get("history", []) if item.get("movie_id") != movie_id
+        ]
+
+    return jsonify({"success": True, "data": data, "summary": build_movie_profile(username)})
+
+
+# ═══════════════════════════════════════════════════════════════
+# PART 3 — DOCTOR / THERAPIST BOOKING
+# ═══════════════════════════════════════════════════════════════
+
+THERAPISTS_DATA: list[dict[str, Any]] = [
+    {
+        "id": "th-001", "name": "Dr. Anita Sharma", "specialty": "Clinical Psychologist",
+        "rating": 4.9, "reviews": 127, "experience": "12 years",
+        "availability": "Mon, Wed, Fri — 10:00 AM to 4:00 PM",
+        "bio": "Specializes in anxiety, depression, and trauma recovery. Uses CBT and mindfulness-based approaches.",
+        "avatar_emoji": "👩‍⚕️", "tags": ["anxiety", "depression", "trauma", "CBT"],
+    },
+    {
+        "id": "th-002", "name": "Dr. Rajesh Patel", "specialty": "Psychiatrist",
+        "rating": 4.8, "reviews": 98, "experience": "15 years",
+        "availability": "Tue, Thu — 9:00 AM to 3:00 PM",
+        "bio": "Expert in mood disorders, PTSD, and medication management. Compassionate and evidence-based care.",
+        "avatar_emoji": "👨‍⚕️", "tags": ["mood disorders", "PTSD", "medication"],
+    },
+    {
+        "id": "th-003", "name": "Dr. Priya Adhikari", "specialty": "Counseling Therapist",
+        "rating": 4.7, "reviews": 84, "experience": "8 years",
+        "availability": "Mon–Fri — 11:00 AM to 6:00 PM",
+        "bio": "Focuses on relationship issues, self-esteem, and life transitions. Warm, empathetic approach.",
+        "avatar_emoji": "👩‍💼", "tags": ["relationships", "self-esteem", "life transitions"],
+    },
+    {
+        "id": "th-004", "name": "Dr. Suman Gurung", "specialty": "Women's Wellness Therapist",
+        "rating": 4.9, "reviews": 112, "experience": "10 years",
+        "availability": "Mon, Wed, Sat — 9:00 AM to 2:00 PM",
+        "bio": "Dedicated to women's mental health, postpartum support, and empowerment counseling. Safe and supportive space.",
+        "avatar_emoji": "🌸", "tags": ["women's health", "postpartum", "empowerment"],
+    },
+    {
+        "id": "th-005", "name": "Dr. Bikram Thapa", "specialty": "Family Therapist",
+        "rating": 4.6, "reviews": 73, "experience": "11 years",
+        "availability": "Tue, Thu, Sat — 10:00 AM to 5:00 PM",
+        "bio": "Helps families navigate conflict, communication challenges, and generational patterns with compassion.",
+        "avatar_emoji": "👨‍👩‍👧", "tags": ["family", "communication", "conflict resolution"],
+    },
+    {
+        "id": "th-006", "name": "Dr. Maya Lama", "specialty": "Art & Expressive Therapist",
+        "rating": 4.8, "reviews": 65, "experience": "7 years",
+        "availability": "Wed, Fri — 1:00 PM to 7:00 PM",
+        "bio": "Uses creative arts, music, and storytelling as therapeutic tools. Ideal for those who find traditional talk therapy challenging.",
+        "avatar_emoji": "🎨", "tags": ["art therapy", "music therapy", "creative healing"],
+    },
+]
+
+BOOKINGS_DATA: list[dict[str, Any]] = [
+    {
+        "id": "bk-001", "patient_username": "patient", "therapist_id": "th-001",
+        "patient_name": "Aasha G.",
+        "therapist_name": "Dr. Anita Sharma", "date": "2026-04-02", "time": "10:30 AM",
+        "status": "confirmed", "notes": "Follow-up session on anxiety management",
+    },
+    {
+        "id": "bk-002", "patient_username": "riya-demo", "therapist_id": "th-004",
+        "patient_name": "Riya T.", "therapist_name": "Dr. Suman Gurung",
+        "date": "2026-04-03", "time": "01:00 PM", "status": "requested",
+        "notes": "Support around boundary-setting, burnout recovery, and rebuilding confidence.",
+    },
+    {
+        "id": "bk-003", "patient_username": "mina-demo", "therapist_id": "th-006",
+        "patient_name": "Mina R.", "therapist_name": "Dr. Maya Lama",
+        "date": "2026-04-04", "time": "05:30 PM", "status": "confirmed",
+        "notes": "Expressive therapy check-in focused on grief processing and creative routines.",
+    },
+]
+
+DOCTOR_CLIENTS_DATA: list[dict[str, Any]] = [
+    {
+        "username": "patient",
+        "display_name": "Aasha G.",
+        "focus": "Rebuilding emotional steadiness after repeated stress and health uncertainty.",
+        "status": "Active follow-up",
+        "next_step": "Blend grounding tools with healing-story reflections that reinforce hope and belonging.",
+        "recent_observation": "Responds well to gentle, family-centered stories and safe community spaces.",
+    },
+    {
+        "username": "riya-demo",
+        "display_name": "Riya T.",
+        "focus": "Burnout recovery, sleep repair, and confidence after difficult relationship boundaries.",
+        "status": "Booking requested",
+        "next_step": "Encourage low-pressure routines, women-focused support, and motivational story prompts.",
+        "recent_observation": "Prefers stories with women empowerment, travel, and second-chance themes.",
+        "top_categories": ["women empowerment", "self-growth", "motivation"],
+        "favorite_titles": ["Wild", "Eat Pray Love"],
+        "mood_themes": ["renewal", "self-discovery", "courage"],
+    },
+    {
+        "username": "mina-demo",
+        "display_name": "Mina R.",
+        "focus": "Creative recovery, grief support, and reconnecting with joy after isolation.",
+        "status": "Session confirmed",
+        "next_step": "Use expressive arts, supportive circles, and light weekly goals instead of intense plans.",
+        "recent_observation": "Lights up around music, inner-child content, and validating group discussion.",
+        "top_categories": ["inner child", "healing", "friendship"],
+        "favorite_titles": ["Coco", "Encanto", "Heartstopper"],
+        "mood_themes": ["memory", "belonging", "gentle love"],
+    },
+]
+
+
+@app.get("/therapists")
+def therapists_page() -> str:
+    user = session.get("user")
+    user_bookings = []
+    movie_profile = None
+    if user:
+        username = user.get("username", "")
+        user_bookings = [b for b in BOOKINGS_DATA if b.get("patient_username") == username]
+        movie_profile = build_movie_profile(username)
+
+    return render_template(
+        "therapists.html",
+        active_page="therapists",
+        body_class="page-therapists",
+        page_id="therapists",
+        page_title="Book a Therapist | Heal Hub",
+        therapists=THERAPISTS_DATA,
+        bookings=user_bookings,
+        movie_profile=movie_profile,
+        women_support_therapists=[therapist for therapist in THERAPISTS_DATA if "women" in therapist["specialty"].lower()][:2],
+    )
+
+
+@app.post("/api/book-therapist")
+@login_required
+def book_therapist() -> Any:
+    user = session.get("user", {})
+    payload = request.get_json(silent=True) or {}
+    therapist_id = payload.get("therapist_id", "")
+    date = payload.get("date", "")
+    time_slot = payload.get("time", "")
+    notes = payload.get("notes", "")
+
+    therapist = next((t for t in THERAPISTS_DATA if t["id"] == therapist_id), None)
+    if not therapist:
+        return jsonify({"success": False, "message": "Therapist not found."}), 400
+
+    booking = {
+        "id": f"bk-{uuid4().hex[:8]}",
+        "patient_username": user.get("username", "patient"),
+        "patient_name": user.get("display_name", "Heal Hub Member"),
+        "therapist_id": therapist_id,
+        "therapist_name": therapist["name"],
+        "date": date or "2026-04-05",
+        "time": time_slot or "10:00 AM",
+        "status": "confirmed",
+        "notes": notes,
+    }
+    BOOKINGS_DATA.append(booking)
+    return jsonify({"success": True, "booking": booking, "message": f"Appointment booked with {therapist['name']}."})
+
+
+# Therapist insight view (for doctor dashboard)
+def get_patient_insights(username: str) -> dict[str, Any]:
+    """Generate soft therapeutic insights from movie preferences."""
+    movie_profile = build_movie_profile(username)
+    watched_movies = movie_profile["watched_movies"]
+    fav_movies = movie_profile["favorite_movies"]
+
+    return {
+        "movies_watched": len(watched_movies),
+        "favorites_count": len(fav_movies),
+        "top_categories": movie_profile["top_categories"][:4],
+        "interests": movie_profile["profile"].get("interests", []),
+        "mood_themes": movie_profile["mood_themes"][:8],
+        "favorite_titles": [m["title"] for m in fav_movies],
+        "watched_titles": [m["title"] for m in watched_movies[:6]],
+        "story_preference_summary": movie_profile["mood_influence_summary"],
+        "insight_note": "These patterns may reflect emotional themes the client resonates with. Use as gentle conversation starters, not diagnostic conclusions.",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
+# PART 4 — COMMUNITY FEATURE
+# ═══════════════════════════════════════════════════════════════
+
+COMMUNITY_GROUPS: list[dict[str, Any]] = [
+    {
+        "id": "grp-001", "name": "Anxiety Support Circle",
+        "description": "A safe space for people managing anxiety to share experiences and coping strategies.",
+        "icon": "💙", "members": 234, "category": "mental health",
+    },
+    {
+        "id": "grp-002", "name": "Healing After Heartbreak",
+        "description": "Support for those recovering from breakups, divorce, or loss of a loved one.",
+        "icon": "💔", "members": 189, "category": "emotional healing",
+    },
+    {
+        "id": "grp-003", "name": "Women's Support Circle",
+        "description": "A women-only space for sharing, empowerment, and mutual support.",
+        "icon": "🌸", "members": 312, "category": "women's wellness",
+    },
+    {
+        "id": "grp-004", "name": "Stress & Burnout Recovery",
+        "description": "For professionals and students dealing with chronic stress and burnout.",
+        "icon": "🔥", "members": 156, "category": "stress management",
+    },
+    {
+        "id": "grp-005", "name": "Self-Growth Club",
+        "description": "Share books, movies, habits, and ideas that help you grow as a person.",
+        "icon": "🌱", "members": 278, "category": "personal growth",
+    },
+    {
+        "id": "grp-006", "name": "Safe Space Discussions",
+        "description": "Open, moderated discussions about life challenges in a judgment-free zone.",
+        "icon": "🕊️", "members": 198, "category": "general support",
+    },
+]
+
+COMMUNITY_POSTS: list[dict[str, Any]] = [
+    {
+        "id": "post-001", "group_id": "grp-001", "author": "Kiran M.",
+        "content": "Today was really hard. My anxiety spiked during a meeting and I had to step out. Does anyone else struggle with work anxiety?",
+        "timestamp": "2026-03-29 09:15", "likes": 24, "replies": [
+            {"author": "Pema S.", "content": "You're not alone. I've been there too. Taking a break is brave, not weak. 💙", "timestamp": "2026-03-29 09:32"},
+            {"author": "Deepa R.", "content": "I keep a grounding exercise on my phone for moments like that. Happy to share if you'd like!", "timestamp": "2026-03-29 10:01"},
+        ],
+    },
+    {
+        "id": "post-002", "group_id": "grp-002", "author": "Sabina T.",
+        "content": "It's been 3 months since my breakup and some days are still so hard. But I watched 'Wild' last night and it reminded me that healing is a journey, not a destination.",
+        "timestamp": "2026-03-28 20:45", "likes": 41, "replies": [
+            {"author": "Ishita K.", "content": "That movie changed my perspective too. You're doing amazing. One day at a time. 🌿", "timestamp": "2026-03-28 21:10"},
+        ],
+    },
+    {
+        "id": "post-003", "group_id": "grp-003", "author": "Laxmi G.",
+        "content": "I finally set a boundary with someone who was draining my energy. It was scary but I feel lighter. Sending strength to everyone here. 🌸",
+        "timestamp": "2026-03-29 11:30", "likes": 56, "replies": [
+            {"author": "Gita P.", "content": "So proud of you! Setting boundaries is one of the hardest but most important things we can do.", "timestamp": "2026-03-29 11:48"},
+            {"author": "Aasha G.", "content": "This inspires me. I need to do the same. Thank you for sharing. 💪", "timestamp": "2026-03-29 12:05"},
+        ],
+    },
+    {
+        "id": "post-004", "group_id": "grp-005", "author": "Milan B.",
+        "content": "Just finished reading 'Atomic Habits' and started a 5-minute morning meditation. Small steps, big changes. What's one small habit that changed your life?",
+        "timestamp": "2026-03-27 14:20", "likes": 33, "replies": [
+            {"author": "Nabin K.", "content": "Journaling before bed. It helps me process the day and sleep better.", "timestamp": "2026-03-27 15:00"},
+            {"author": "Tsering L.", "content": "Walking 20 minutes after lunch. Simple but it transformed my energy levels.", "timestamp": "2026-03-27 16:30"},
+        ],
+    },
+    {
+        "id": "post-005", "group_id": "grp-004", "author": "Bikash R.",
+        "content": "I burned out so badly last year that I couldn't get out of bed for weeks. If you're feeling overwhelmed, please take it seriously. Your body is trying to tell you something.",
+        "timestamp": "2026-03-28 08:00", "likes": 67, "replies": [
+            {"author": "Ramesh D.", "content": "Thank you for sharing this. I'm in that phase right now and needed to hear this.", "timestamp": "2026-03-28 08:45"},
+        ],
+    },
+    {
+        "id": "post-006", "group_id": "grp-006", "author": "Hari S.",
+        "content": "Sometimes I feel like I'm the only one struggling while everyone else has it figured out. Then I come here and realize we're all just doing our best. Thank you all. 🕊️",
+        "timestamp": "2026-03-29 07:00", "likes": 89, "replies": [
+            {"author": "Janak T.", "content": "Nobody has it all figured out. We're all works in progress. You belong here. ❤️", "timestamp": "2026-03-29 07:22"},
+            {"author": "Kiran M.", "content": "This community has been a lifeline for me. You're never alone.", "timestamp": "2026-03-29 08:10"},
+        ],
+    },
+]
+
+USER_COMMUNITY_DATA: dict[str, dict[str, Any]] = {
+    "patient": {
+        "joined_groups": ["grp-001", "grp-003", "grp-005"],
+        "posts_count": 3,
+        "support_given": 12,
+        "support_received": 18,
+        "comfort_topics": ["boundaries", "hopeful stories", "gentle routines"],
+    }
+}
+
+
+@app.get("/community")
+def community_page() -> str:
+    group_id = request.args.get("group", "").strip()
+    user = session.get("user")
+    user_community = {}
+    community_profile = None
+    if user:
+        username = user.get("username", "")
+        user_community = USER_COMMUNITY_DATA.get(username, {})
+        community_profile = build_community_profile(username)
+
+    if group_id:
+        group = next((g for g in COMMUNITY_GROUPS if g["id"] == group_id), None)
+        posts = [p for p in COMMUNITY_POSTS if p["group_id"] == group_id]
+    else:
+        group = None
+        posts = COMMUNITY_POSTS[:6]
+
+    return render_template(
+        "community.html",
+        active_page="community",
+        body_class="page-community",
+        page_id="community",
+        page_title="Community Support | Heal Hub",
+        groups=COMMUNITY_GROUPS,
+        selected_group=group,
+        posts=posts,
+        user_community=user_community,
+        community_profile=community_profile,
+    )
+
+
+@app.post("/api/community-post")
+@login_required
+def community_post() -> Any:
+    user = session.get("user", {})
+    payload = request.get_json(silent=True) or {}
+    group_id = payload.get("group_id", "grp-006")
+    content = payload.get("content", "").strip()
+
+    if not content:
+        return jsonify({"success": False, "message": "Post content cannot be empty."}), 400
+
+    post = {
+        "id": f"post-{uuid4().hex[:8]}",
+        "group_id": group_id,
+        "author": user.get("display_name", "Anonymous"),
+        "content": content,
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        "likes": 0,
+        "replies": [],
+    }
+    COMMUNITY_POSTS.insert(0, post)
+    community = USER_COMMUNITY_DATA.setdefault(
+        user.get("username", "patient"),
+        {"joined_groups": [], "posts_count": 0, "support_given": 0, "support_received": 0, "comfort_topics": []},
+    )
+    community["posts_count"] = community.get("posts_count", 0) + 1
+    if group_id not in community.get("joined_groups", []):
+        community.setdefault("joined_groups", []).append(group_id)
+    return jsonify({"success": True, "post": post})
+
+
+@app.post("/api/community-reply")
+@login_required
+def community_reply() -> Any:
+    user = session.get("user", {})
+    payload = request.get_json(silent=True) or {}
+    post_id = payload.get("post_id", "")
+    content = payload.get("content", "").strip()
+
+    if not content:
+        return jsonify({"success": False, "message": "Reply cannot be empty."}), 400
+
+    post = next((p for p in COMMUNITY_POSTS if p["id"] == post_id), None)
+    if not post:
+        return jsonify({"success": False, "message": "Post not found."}), 404
+
+    reply = {
+        "author": user.get("display_name", "Anonymous"),
+        "content": content,
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+    }
+    post["replies"].append(reply)
+    return jsonify({"success": True, "reply": reply})
+
+
+@app.post("/api/community-react")
+@login_required
+def community_react() -> Any:
+    payload = request.get_json(silent=True) or {}
+    post_id = payload.get("post_id", "")
+    post = next((item for item in COMMUNITY_POSTS if item["id"] == post_id), None)
+    if not post:
+        return jsonify({"success": False, "message": "Post not found."}), 404
+
+    post["likes"] = post.get("likes", 0) + 1
+    return jsonify({"success": True, "likes": post["likes"]})
+
+
+# ═══════════════════════════════════════════════════════════════
+# PART 5 — WOMEN'S SAFE SPACE
+# ═══════════════════════════════════════════════════════════════
+
+SAFETY_CARDS: list[dict[str, Any]] = [
+    {
+        "title": "Recognizing Manipulation",
+        "icon": "🚩",
+        "content": "Learn to identify common manipulation tactics: love-bombing, gaslighting, isolation from friends, and guilt-tripping. Trust your instincts — if something feels wrong, it probably is.",
+        "category": "awareness",
+    },
+    {
+        "title": "Digital Safety Basics",
+        "icon": "🔒",
+        "content": "Protect your online presence: use strong passwords, enable two-factor authentication, be cautious about sharing personal photos, and review privacy settings regularly.",
+        "category": "digital safety",
+    },
+    {
+        "title": "Setting Healthy Boundaries",
+        "icon": "🛡️",
+        "content": "You have the right to say no. Healthy boundaries protect your emotional energy. Practice saying: 'I'm not comfortable with that' — it's a complete sentence.",
+        "category": "boundaries",
+    },
+    {
+        "title": "Safe AI Interactions",
+        "icon": "🤖",
+        "content": "Be mindful when sharing personal information with AI chatbots. Never share passwords, financial details, or intimate content. AI should support you, not replace real human connection.",
+        "category": "digital safety",
+    },
+    {
+        "title": "How to Ask for Help",
+        "icon": "🤝",
+        "content": "Reaching out is strength, not weakness. Talk to someone you trust, contact a helpline, or visit a local support center. You deserve support and you are not alone.",
+        "category": "support",
+    },
+    {
+        "title": "Understanding Consent",
+        "icon": "💜",
+        "content": "Consent must be freely given, reversible, informed, enthusiastic, and specific. It applies to physical contact, sharing information, and digital interactions.",
+        "category": "boundaries",
+    },
+    {
+        "title": "Warning Signs of Unsafe Relationships",
+        "icon": "⚠️",
+        "content": "Watch for: controlling behavior, jealousy disguised as love, threats, monitoring your phone, isolating you from support systems, and making you feel responsible for their emotions.",
+        "category": "awareness",
+    },
+    {
+        "title": "Self-Care During Difficult Times",
+        "icon": "🌿",
+        "content": "When going through hard times: maintain basic routines, stay connected with safe people, limit social media if it triggers you, and be gentle with yourself.",
+        "category": "wellbeing",
+    },
+]
+
+SUPPORT_RESOURCES: list[dict[str, Any]] = [
+    {"name": "National Women's Helpline", "contact": "1145 (Nepal)", "type": "helpline"},
+    {"name": "Crisis Text Line", "contact": "Text HOME to 741741", "type": "text support"},
+    {"name": "Women's Rehabilitation Center", "contact": "WOREC Nepal", "type": "organization"},
+    {"name": "Maiti Nepal", "contact": "Anti-trafficking support", "type": "organization"},
+]
+
+
+def dedupe_preserving_order(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    items: list[str] = []
+    for value in values:
+        cleaned = str(value or "").strip()
+        if cleaned and cleaned not in seen:
+            seen.add(cleaned)
+            items.append(cleaned)
+    return items
+
+
+def ensure_user_movie_profile(username: str) -> dict[str, Any]:
+    profile = USER_MOVIE_DATA.setdefault(username, {})
+    profile.setdefault("watched", [])
+    profile.setdefault("want_to_watch", [])
+    profile.setdefault("favorites", [])
+    profile.setdefault("interests", [])
+    profile.setdefault("history", [])
+    profile.setdefault("check_in", "Looking for stories that feel steady, hopeful, and kind.")
+    return profile
+
+
+def movie_catalog() -> dict[str, dict[str, Any]]:
+    return {movie["id"]: movie for movie in MOVIES_DATA}
+
+
+def append_watch_history(profile: dict[str, Any], movie_id: str) -> None:
+    catalog = movie_catalog()
+    movie = catalog.get(movie_id)
+    if not movie:
+        return
+
+    history = profile.setdefault("history", [])
+    existing = next((item for item in history if item.get("movie_id") == movie_id), None)
+    entry = {
+        "movie_id": movie_id,
+        "watched_on": datetime.utcnow().strftime("%Y-%m-%d"),
+        "reflection": movie["why_helps"],
+        "mood_after": (movie.get("mood_tags") or ["steady"])[0],
+    }
+    if existing:
+        history.remove(existing)
+    history.insert(0, entry)
+
+
+def recommended_movies_for_profile(profile: dict[str, Any], limit: int = 4) -> list[dict[str, Any]]:
+    watched_ids = set(profile.get("watched", []))
+    favorite_ids = set(profile.get("favorites", []))
+    interest_set = set(profile.get("interests", []))
+
+    category_counts: dict[str, int] = {}
+    for movie in MOVIES_DATA:
+        if movie["id"] in watched_ids or movie["id"] in favorite_ids:
+            for category in movie["categories"]:
+                category_counts[category] = category_counts.get(category, 0) + 1
+
+    def score(movie: dict[str, Any]) -> tuple[int, int]:
+        overlap = len(interest_set.intersection(movie["categories"]))
+        familiarity = sum(category_counts.get(category, 0) for category in movie["categories"])
+        comfort_bonus = 1 if movie["type"] == "series" else 0
+        return overlap * 4 + familiarity + comfort_bonus, movie["year"]
+
+    ranked = [
+        movie
+        for movie in sorted(MOVIES_DATA, key=score, reverse=True)
+        if movie["id"] not in watched_ids
+    ]
+    return ranked[:limit]
+
+
+def build_movie_profile(username: str) -> dict[str, Any]:
+    profile = ensure_user_movie_profile(username)
+    catalog = movie_catalog()
+    watched_movies = [catalog[movie_id] for movie_id in profile["watched"] if movie_id in catalog]
+    want_movies = [catalog[movie_id] for movie_id in profile["want_to_watch"] if movie_id in catalog]
+    favorite_movies = [catalog[movie_id] for movie_id in profile["favorites"] if movie_id in catalog]
+
+    category_counts: dict[str, int] = {}
+    for movie in watched_movies:
+        for category in movie["categories"]:
+            category_counts[category] = category_counts.get(category, 0) + 1
+
+    top_categories = sorted(category_counts.items(), key=lambda item: item[1], reverse=True)
+    mood_themes = dedupe_preserving_order(
+        [tag for movie in watched_movies + favorite_movies for tag in movie.get("mood_tags", [])]
+    )
+
+    raw_history = list(profile.get("history", []))
+    if not raw_history:
+        raw_history = [
+            {
+                "movie_id": movie["id"],
+                "watched_on": "2026-03-20",
+                "reflection": movie["why_helps"],
+                "mood_after": (movie.get("mood_tags") or ["steady"])[0],
+            }
+            for movie in watched_movies[:3]
+        ]
+
+    recently_watched: list[dict[str, Any]] = []
+    for entry in raw_history:
+        movie = catalog.get(entry.get("movie_id", ""))
+        if movie:
+            recently_watched.append({**entry, "movie": movie})
+
+    recommended_movies = recommended_movies_for_profile(profile)
+    top_labels = [titlecase_words(category) for category, _ in top_categories[:3]]
+    mood_summary = (
+        f"You often choose {', '.join(top_labels)} stories that offer comfort, perspective, and forward motion."
+        if top_labels
+        else "Your story journey is still open. A few thoughtful films or series can help shape it."
+    )
+
+    personal_profile = (
+        "A reflective, hope-seeking viewer who recharges through emotionally warm stories and meaningful character growth."
+        if top_labels
+        else "A curious viewer exploring what kinds of stories bring the most comfort and inspiration."
+    )
+
+    return {
+        "profile": profile,
+        "watched_movies": watched_movies,
+        "want_movies": want_movies,
+        "favorite_movies": favorite_movies,
+        "watched_count": len(watched_movies),
+        "favorites_count": len(favorite_movies),
+        "top_categories": top_categories,
+        "top_category_labels": top_labels,
+        "mood_themes": mood_themes,
+        "recently_watched": recently_watched[:4],
+        "recommended_movies": recommended_movies,
+        "mood_influence_summary": mood_summary,
+        "personal_profile": personal_profile,
+        "mood_match": recommended_movies[0] if recommended_movies else None,
+    }
+
+
+def build_community_profile(username: str) -> dict[str, Any]:
+    profile = USER_COMMUNITY_DATA.setdefault(
+        username,
+        {"joined_groups": [], "posts_count": 0, "support_given": 0, "support_received": 0, "comfort_topics": []},
+    )
+    joined_ids = set(profile.get("joined_groups", []))
+    joined_groups = [group for group in COMMUNITY_GROUPS if group["id"] in joined_ids]
+    recent_discussions = [
+        post for post in COMMUNITY_POSTS if not joined_ids or post["group_id"] in joined_ids
+    ][:4]
+    recommended_groups = [group for group in COMMUNITY_GROUPS if group["id"] not in joined_ids][:3]
+    trending_topics = dedupe_preserving_order(
+        [group["category"] for group in COMMUNITY_GROUPS] + profile.get("comfort_topics", [])
+    )[:5]
+
+    return {
+        "profile": profile,
+        "joined_groups": joined_groups,
+        "recent_discussions": recent_discussions,
+        "recommended_groups": recommended_groups,
+        "trending_topics": trending_topics,
+        "safe_circle": next((group for group in COMMUNITY_GROUPS if group["id"] == "grp-003"), None),
+        "support_summary": (
+            f"You are active in {len(joined_groups)} support circles and have received "
+            f"{profile.get('support_received', 0)} supportive responses so far."
+        ),
+    }
+
+
+def build_platform_snapshot() -> dict[str, Any]:
+    confirmed_bookings = [
+        booking for booking in BOOKINGS_DATA if booking.get("status", "").lower() == "confirmed"
+    ]
+    return {
+        "stories_count": len(MOVIES_DATA),
+        "therapists_count": len(THERAPISTS_DATA),
+        "groups_count": len(COMMUNITY_GROUPS),
+        "community_posts_count": len(COMMUNITY_POSTS),
+        "confirmed_bookings": len(confirmed_bookings),
+        "resources_count": len(SUPPORT_RESOURCES),
+        "women_circle_members": next(
+            (group["members"] for group in COMMUNITY_GROUPS if group["id"] == "grp-003"),
+            0,
+        ),
+    }
+
+
+def build_patient_dashboard_context(user: dict[str, Any]) -> dict[str, Any]:
+    username = user.get("username", "patient")
+    portal_patient = portal_patient_for_user(user)
+    prescriptions = patient_prescriptions(username)
+    notes = patient_notes(username)
+    ai_summary = ai_triage_summary(["chest pain", "shortness of breath"])
+    movie_profile = build_movie_profile(username)
+    community_profile = build_community_profile(username)
+    bookings = [booking for booking in BOOKINGS_DATA if booking.get("patient_username") == username]
+    latest_booking = bookings[0] if bookings else None
+    quick_actions = [
+        {"label": "Explore healing movies", "href": url_for("movies_page")},
+        {"label": "Book therapist", "href": url_for("therapists_page")},
+        {"label": "Join support group", "href": url_for("community_page")},
+        {"label": "Visit safe space", "href": url_for("safe_space_page")},
+    ]
+
+    return {
+        "portal_patient": portal_patient,
+        "prescriptions": prescriptions,
+        "notes": notes,
+        "ai_summary": ai_summary,
+        "movie_profile": movie_profile,
+        "community_profile": community_profile,
+        "bookings": bookings,
+        "latest_booking": latest_booking,
+        "recommended_movies": movie_profile["recommended_movies"],
+        "watched_movies": movie_profile["watched_movies"],
+        "fav_movies": movie_profile["favorite_movies"],
+        "top_categories": movie_profile["top_categories"],
+        "movie_data": movie_profile["profile"],
+        "growth_timeline": movie_profile["recently_watched"],
+        "safety_highlights": SAFETY_CARDS[:3],
+        "quick_actions": quick_actions,
+        "wellness_summary": {
+            "headline": "Stories, safe community, and guided support are all moving in the right direction.",
+            "story_summary": movie_profile["mood_influence_summary"],
+            "community_summary": community_profile["support_summary"],
+            "booking_status": latest_booking["status"].title() if latest_booking else "Ready to schedule",
+        },
+    }
+
+
+def build_doctor_client_cards() -> list[dict[str, Any]]:
+    client_cards: list[dict[str, Any]] = []
+    patient_movie_profile = build_movie_profile("patient")
+    patient_community = build_community_profile("patient")
+    patient_booking = next(
+        (booking for booking in BOOKINGS_DATA if booking.get("patient_username") == "patient"),
+        None,
+    )
+
+    for client in DOCTOR_CLIENTS_DATA:
+        if client["username"] == "patient":
+            client_cards.append(
+                {
+                    "display_name": client["display_name"],
+                    "focus": client["focus"],
+                    "status": client["status"],
+                    "next_step": client["next_step"],
+                    "recent_observation": client["recent_observation"],
+                    "top_categories": patient_movie_profile["top_category_labels"][:3],
+                    "favorite_titles": [movie["title"] for movie in patient_movie_profile["favorite_movies"][:3]],
+                    "mood_themes": patient_movie_profile["mood_themes"][:4],
+                    "joined_groups": [group["name"] for group in patient_community["joined_groups"][:3]],
+                    "booking": patient_booking,
+                }
+            )
+            continue
+
+        booking = next(
+            (item for item in BOOKINGS_DATA if item.get("patient_username") == client["username"]),
+            None,
+        )
+        client_cards.append(
+            {
+                "display_name": client["display_name"],
+                "focus": client["focus"],
+                "status": client["status"],
+                "next_step": client["next_step"],
+                "recent_observation": client["recent_observation"],
+                "top_categories": [titlecase_words(category) for category in client.get("top_categories", [])],
+                "favorite_titles": client.get("favorite_titles", []),
+                "mood_themes": client.get("mood_themes", []),
+                "joined_groups": [],
+                "booking": booking,
+            }
+        )
+
+    return client_cards
+
+
+def build_doctor_dashboard_context(user: dict[str, Any]) -> dict[str, Any]:
+    portal_patient = PORTAL_PATIENTS["patient"]
+    patient_story_profile = build_movie_profile("patient")
+    patient_community = build_community_profile("patient")
+    doctor_bookings = sorted(
+        BOOKINGS_DATA,
+        key=lambda booking: (booking.get("date", ""), booking.get("time", "")),
+    )
+
+    return {
+        "portal_patient": portal_patient,
+        "prescriptions": patient_prescriptions("patient"),
+        "notes": patient_notes("patient"),
+        "ai_summary": ai_triage_summary(["chest pain", "shortness of breath"]),
+        "patient_insights": get_patient_insights("patient"),
+        "patient_story_profile": patient_story_profile,
+        "patient_community": patient_community,
+        "bookings": doctor_bookings,
+        "doctor_clients": build_doctor_client_cards(),
+        "quick_actions": [
+            {"label": "Open story library", "href": url_for("movies_page")},
+            {"label": "Review bookings", "href": url_for("therapists_page")},
+            {"label": "Check community", "href": url_for("community_page")},
+        ],
+        "safety_highlights": SAFETY_CARDS[:3],
+        "doctor_summary": {
+            "headline": f"{user.get('display_name', 'Doctor')} is reviewing story-based emotional cues alongside care planning.",
+            "insight_note": "These are lightweight conversation aids that help understand emotional resonance. They are not diagnoses.",
+        },
+    }
+
+
+@app.post("/api/movie-interests")
+@login_required
+def movie_interests() -> Any:
+    user = session.get("user", {})
+    payload = request.get_json(silent=True) or {}
+    raw_interests = payload.get("interests", [])
+    interests = [
+        item for item in dedupe_preserving_order([str(value).strip().lower() for value in raw_interests])
+        if item in MOVIE_CATEGORIES
+    ]
+
+    profile = ensure_user_movie_profile(user.get("username", "patient"))
+    profile["interests"] = interests[:5]
+    return jsonify({"success": True, "profile": build_movie_profile(user.get("username", "patient"))})
+
+
+@app.get("/safe-space")
+def safe_space_page() -> str:
+    return render_template(
+        "safe_space.html",
+        active_page="safe-space",
+        body_class="page-safe-space",
+        page_id="safe-space",
+        page_title="Women's Wellness & Safety Hub | Heal Hub",
+        safety_cards=SAFETY_CARDS,
+        support_resources=SUPPORT_RESOURCES,
+        women_circle=next((group for group in COMMUNITY_GROUPS if group["id"] == "grp-003"), None),
+        featured_therapists=[therapist for therapist in THERAPISTS_DATA if "women" in therapist["specialty"].lower()][:2],
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)

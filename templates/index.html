@@ -1,161 +1,127 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="hero-grid home-hero">
+  <section class="hero-grid home-hero hub-hero">
     <div class="home-hero-column">
-      <div class="hero-copy surface" data-reveal>
+      <div class="hero-copy surface hero-copy-wellness" data-reveal>
         <div class="hero-signal-row">
-          <span class="signal-chip signal-chip-primary">AI Triage</span>
-          <span class="signal-chip signal-chip-teal">Live Hospital Network</span>
-          <span class="signal-chip signal-chip-amber">Surge Simulation Ready</span>
+          <span class="signal-chip signal-chip-primary">Healing Through Stories</span>
+          <span class="signal-chip signal-chip-teal">Safe Community Support</span>
+          <span class="signal-chip signal-chip-amber">Therapist Booking Ready</span>
         </div>
-        <p class="eyebrow">High-value health systems</p>
-        <h1>HealHub: AI for Smarter Health Systems</h1>
+        <p class="eyebrow">Warm, modern wellness support</p>
+        <h1>Feel seen, supported, and gently guided back to yourself.</h1>
         <p class="lead">
-          HealHub is an AI-powered hospital coordination platform built to optimize triage,
-          resource allocation, treatment order, and patient redistribution across a live care network.
+          Heal Hub blends emotionally healing movies and series, therapist booking, community care, women's safety resources,
+          and the original smart care coordination experience into one polished platform.
         </p>
         <p class="subcopy">
-          Instead of acting like a symptom checker, HealHub helps hospitals make system-level decisions
-          under real constraints such as limited beds, doctors, and ICU capacity.
+          The result is a demo-ready experience that supports both the emotional world of the user and the practical path
+          toward safe, trusted care.
         </p>
 
         <div class="hero-actions">
-          <a class="btn btn-primary" href="{{ url_for('login') }}">Get Started</a>
-          <a class="btn btn-secondary" href="{{ url_for('dashboard_page') }}">View Dashboard</a>
+          <a class="btn btn-primary" href="{{ url_for('movies_page') }}">Explore Healing Stories</a>
+          <a class="btn btn-secondary" href="{{ url_for('dashboard_page') }}">Open Dashboard</a>
         </div>
 
         <div class="hero-metrics-ribbon">
           <div class="hero-ribbon-stat">
-            <span class="meta-label">Live network</span>
-            <strong>3 hospitals</strong>
+            <span class="meta-label">Story library</span>
+            <strong>{{ platform_snapshot.stories_count }} healing titles</strong>
           </div>
           <div class="hero-ribbon-stat">
-            <span class="meta-label">Decision scope</span>
-            <strong>Triage + allocation + routing</strong>
+            <span class="meta-label">Trusted support</span>
+            <strong>{{ platform_snapshot.therapists_count }} therapists available</strong>
           </div>
           <div class="hero-ribbon-stat">
-            <span class="meta-label">System focus</span>
-            <strong>System optimization over diagnosis-only AI</strong>
+            <span class="meta-label">Belonging spaces</span>
+            <strong>{{ platform_snapshot.groups_count }} support circles live</strong>
           </div>
         </div>
       </div>
 
-      <div class="hero-trust-strip home-trust-strip surface" data-reveal>
-        <div class="home-trust-intro">
-          <p class="eyebrow">Operating pillars</p>
-          <strong>HealHub works across triage, hospital capacity, and live network coordination at the same time.</strong>
+      <div class="surface home-healing-map" data-reveal>
+        <div class="section-head compact-section-head">
+          <div>
+            <p class="eyebrow">Why it resonates</p>
+            <h2>A platform that treats healing like a journey, not a single screen.</h2>
+          </div>
         </div>
-
-        <div class="home-trust-grid">
-          <article class="trust-item trust-item-home">
-            <span class="meta-label">Triage layer</span>
-            <strong>Prioritize unstable patients first</strong>
-            <p>Urgency scoring blends symptoms, vitals, risk factors, and wait pressure.</p>
+        <div class="journey-grid">
+          <article class="journey-node">
+            <span class="journey-step">01</span>
+            <strong>Stories open emotional connection</strong>
+            <p>Users discover films and series that help them process grief, courage, joy, and growth.</p>
           </article>
-          <article class="trust-item trust-item-home">
-            <span class="meta-label">Capacity layer</span>
-            <strong>Place patients where care can start sooner</strong>
-            <p>Allocation considers doctors, beds, ICU supply, and queue depth together.</p>
+          <article class="journey-node">
+            <span class="journey-step">02</span>
+            <strong>Support becomes more human</strong>
+            <p>Therapists and community circles offer thoughtful next steps without turning preferences into diagnoses.</p>
           </article>
-          <article class="trust-item trust-item-home">
-            <span class="meta-label">Network layer</span>
-            <strong>Redirect safely when one hospital is overloaded</strong>
-            <p>Every recommendation stays explainable so clinicians can trust the next move.</p>
+          <article class="journey-node">
+            <span class="journey-step">03</span>
+            <strong>Safety stays visible</strong>
+            <p>Women's wellbeing, boundaries, consent, and digital safety are integrated as part of care.</p>
           </article>
         </div>
       </div>
     </div>
 
-    <div class="hero-visual hero-visual-premium surface" data-reveal>
+    <div class="hero-visual hero-visual-premium surface story-control-panel" data-reveal>
       <div class="visual-mesh"></div>
-      <div class="preview-shell preview-shell-premium">
-        <div class="window-chrome">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
+      <div class="preview-shell preview-shell-premium story-shell">
         <div class="preview-header">
           <div>
-            <span class="meta-label">HealHub command preview</span>
-            <strong>Network optimization cockpit</strong>
+            <span class="meta-label">Heal Hub live preview</span>
+            <strong>Stories, support, and safer care in one flow</strong>
           </div>
-          <span class="status-chip status-stable">Live AI orchestration</span>
+          <span class="status-chip status-stable">Demo ready</span>
         </div>
 
-        <div class="preview-stage">
-          <div class="preview-stat-grid">
-            <div class="preview-stat">
-              <span>Total hospitals</span>
-              <strong>3</strong>
+        <div class="story-stage">
+          <article class="story-highlight-card story-highlight-card-primary">
+            <span class="meta-label">Current mood match</span>
+            <strong>{{ featured_movies[0].title }}</strong>
+            <p>{{ featured_movies[0].why_helps }}</p>
+            <div class="tag-cloud">
+              {% for tag in featured_movies[0].mood_tags %}
+                <span>{{ tag }}</span>
+              {% endfor %}
             </div>
-            <div class="preview-stat">
-              <span>Critical cases tracked</span>
-              <strong>5</strong>
-            </div>
-            <div class="preview-stat">
-              <span>Average network wait</span>
-              <strong>18m</strong>
-            </div>
+          </article>
+
+          <div class="story-preview-grid">
+            <article class="story-mini-card">
+              <span class="story-mini-kicker">Book support</span>
+              <strong>{{ featured_therapists[0].name }}</strong>
+              <p>{{ featured_therapists[0].specialty }} • {{ featured_therapists[0].rating }}/5</p>
+            </article>
+            <article class="story-mini-card">
+              <span class="story-mini-kicker">Join a circle</span>
+              <strong>{{ featured_groups[0].name }}</strong>
+              <p>{{ featured_groups[0].members }} members building support together.</p>
+            </article>
           </div>
 
-          <div class="preview-panel">
-            <div class="mini-chart">
-              <span class="mini-bar bar-blue bar-tall"></span>
-              <span class="mini-bar bar-teal bar-mid"></span>
-              <span class="mini-bar bar-amber bar-xl"></span>
-              <span class="mini-bar bar-blue bar-short"></span>
-              <span class="mini-bar bar-red bar-max"></span>
-            </div>
-            <div class="preview-copy">
-              <strong>AI prioritizes the queue, reallocates scarce resources, and recommends safe redistribution when one facility approaches overload.</strong>
-            </div>
-          </div>
-
-          <div class="preview-insight-grid">
-            <div class="floating-status-card">
-              <span class="meta-label">Priority engine</span>
-              <strong>Critical queue reshuffled in real time</strong>
-              <p>High-risk cases are elevated using symptoms, vitals, age, and instability.</p>
-            </div>
-
-            <div class="floating-status-card">
-              <span class="meta-label">Redistribution layer</span>
-              <strong>Patients routed away from bottlenecks</strong>
-              <p>HealHub compares ICU, bed, and doctor availability before redirecting.</p>
-            </div>
+          <div class="story-safety-panel">
+            <span class="meta-label">Safe by design</span>
+            <strong>{{ featured_safety_cards[0].title }}</strong>
+            <p>{{ featured_safety_cards[0].content }}</p>
           </div>
         </div>
 
-        <div class="preview-queue">
-          <div class="preview-case">
-            <span class="status-chip status-critical">Critical</span>
-            <div>
-              <strong>HH-014 redirected to Pokhara</strong>
-              <p>No ICU slot available in Kathmandu.</p>
+        <div class="preview-queue story-preview-list">
+          {% for movie in featured_movies %}
+            <div class="preview-case">
+              <span class="status-chip status-neutral">{{ movie.type|title }}</span>
+              <div>
+                <strong>{{ movie.title }}</strong>
+                <p>{{ movie.description }}</p>
+              </div>
             </div>
-          </div>
-          <div class="preview-case">
-            <span class="status-chip status-warning">Queue</span>
-            <div>
-              <strong>Wait time reduced by 24%</strong>
-              <p>Network rebalanced after surge simulation.</p>
-            </div>
-          </div>
-          <div class="preview-case">
-            <span class="status-chip status-stable">Stable</span>
-            <div>
-              <strong>Biratnagar absorbing maternal referrals</strong>
-              <p>Specialty fit improved throughput without raising network-wide strain.</p>
-            </div>
-          </div>
+          {% endfor %}
         </div>
-      </div>
-
-      <div class="hero-side-note">
-        <span class="meta-label">Why this feels different</span>
-        <strong>HealHub shows AI as a control layer for the whole health system.</strong>
-        <p>That makes the first screen feel more operational, more credible, and easier to understand.</p>
       </div>
     </div>
   </section>
@@ -163,167 +129,157 @@
   <section class="section-block home-capabilities" data-reveal>
     <div class="section-head home-section-head">
       <div>
-        <p class="eyebrow">Wellness</p>
-        <h2>Support recovery alongside hospital coordination</h2>
+        <p class="eyebrow">The new Heal Hub</p>
+        <h2>Four support layers working together</h2>
       </div>
       <p class="subcopy">
-        HealHub can extend beyond operations with simple wellness check-ins and supportive recovery guidance that fits the same product flow.
+        Built for a wellness-focused hackathon demo without throwing away the original hospital operations intelligence.
       </p>
     </div>
 
     <div class="feature-grid home-feature-grid">
-      <article class="feature-card surface home-feature-card home-feature-card-primary">
+      <article class="feature-card surface feature-card-cinema">
         <div class="feature-card-top">
           <span class="feature-kicker">01</span>
-          <span class="signal-chip signal-chip-primary feature-signal">Emotional signals</span>
+          <span class="signal-chip signal-chip-primary feature-signal">Healing stories</span>
         </div>
-        <h3>Mood Analysis</h3>
-        <p>Track emotions and stress patterns.</p>
+        <h3>Movies and series with meaning</h3>
+        <p>Users browse seeded titles by motivation, self-growth, women empowerment, friendship, and emotional healing.</p>
       </article>
 
-      <article class="feature-card surface home-feature-card home-feature-card-teal">
+      <article class="feature-card surface feature-card-booking">
         <div class="feature-card-top">
           <span class="feature-kicker">02</span>
-          <span class="signal-chip signal-chip-teal feature-signal">Daily habits</span>
+          <span class="signal-chip signal-chip-teal feature-signal">Human support</span>
         </div>
-        <h3>Lifestyle Tracking</h3>
-        <p>Monitor sleep, hydration, food, and movement.</p>
+        <h3>Book therapists with confidence</h3>
+        <p>Ratings, reviews, availability, and soft interest insights help the booking flow feel thoughtful and real.</p>
       </article>
 
-      <article class="feature-card surface home-feature-card home-feature-card-amber">
+      <article class="feature-card surface feature-card-community">
         <div class="feature-card-top">
           <span class="feature-kicker">03</span>
-          <span class="signal-chip signal-chip-amber feature-signal">Guided support</span>
+          <span class="signal-chip signal-chip-amber feature-signal">Belonging</span>
         </div>
-        <h3>Healing Suggestions</h3>
-        <p>Recommend breathing, music, meditation, and journaling.</p>
+        <h3>Support circles that feel alive</h3>
+        <p>Warm demo posts, replies, and group channels make the platform feel less lonely and more human.</p>
       </article>
 
-      <article class="feature-card surface home-feature-card home-feature-card-rose">
+      <article class="feature-card surface feature-card-safety">
         <div class="feature-card-top">
           <span class="feature-kicker">04</span>
-          <span class="signal-chip signal-chip-primary feature-signal">Recovery care</span>
+          <span class="signal-chip signal-chip-primary feature-signal">Women's wellbeing</span>
         </div>
-        <h3>Human Connection</h3>
-        <p>Remind patients to connect with loved ones.</p>
+        <h3>Safety, boundaries, and trust</h3>
+        <p>Respectful guidance around manipulation, consent, digital safety, and asking for help stays visible throughout the experience.</p>
       </article>
     </div>
   </section>
 
-  <section class="section-block home-capabilities" data-reveal>
+  <section class="section-block story-library-preview" data-reveal>
     <div class="section-head home-section-head">
       <div>
-        <p class="eyebrow">Core capabilities</p>
-        <h2>The operating system behind smarter hospital flow</h2>
+        <p class="eyebrow">Healing through movies</p>
+        <h2>Curated stories that support motivation, courage, and emotional recovery</h2>
       </div>
-      <p class="subcopy">
-        HealHub turns intake, resource limits, and transfer logic into one coordinated control layer.
-      </p>
+      <a class="btn btn-secondary" href="{{ url_for('movies_page') }}">Open story library</a>
     </div>
 
-    <div class="feature-grid home-feature-grid">
-      <article class="feature-card surface home-feature-card home-feature-card-primary">
-        <div class="feature-card-top">
-          <span class="feature-kicker">01</span>
-          <span class="signal-chip signal-chip-primary feature-signal">Urgency engine</span>
-        </div>
-        <h3>AI Triage Scoring</h3>
-        <p>Generates urgency scores and triage levels with a clear reason trail for every case.</p>
-        <div class="feature-foot">
-          <span class="meta-label">Output</span>
-          <strong>Priority ranking clinicians can inspect</strong>
-        </div>
-      </article>
-      <article class="feature-card surface home-feature-card home-feature-card-teal">
-        <div class="feature-card-top">
-          <span class="feature-kicker">02</span>
-          <span class="signal-chip signal-chip-teal feature-signal">Capacity balancing</span>
-        </div>
-        <h3>Smart Resource Allocation</h3>
-        <p>Balances doctors, beds, and ICU capacity so scarce resources go where they matter most.</p>
-        <div class="feature-foot">
-          <span class="meta-label">Output</span>
-          <strong>Scarcity-aware treatment placement</strong>
-        </div>
-      </article>
-      <article class="feature-card surface home-feature-card home-feature-card-amber">
-        <div class="feature-card-top">
-          <span class="feature-kicker">03</span>
-          <span class="signal-chip signal-chip-amber feature-signal">Network routing</span>
-        </div>
-        <h3>Multi-Hospital Redistribution</h3>
-        <p>Prevents overload by shifting patients to better-fit facilities based on capacity and specialty match.</p>
-        <div class="feature-foot">
-          <span class="meta-label">Output</span>
-          <strong>Safer transfers away from local bottlenecks</strong>
-        </div>
-      </article>
-      <article class="feature-card surface home-feature-card home-feature-card-rose">
-        <div class="feature-card-top">
-          <span class="feature-kicker">04</span>
-          <span class="signal-chip signal-chip-primary feature-signal">Stress testing</span>
-        </div>
-        <h3>Emergency Surge Simulation</h3>
-        <p>Stress-tests the network with sudden demand spikes and shows reprioritization in real time.</p>
-        <div class="feature-foot">
-          <span class="meta-label">Output</span>
-          <strong>Visible rebalancing during sudden demand spikes</strong>
-        </div>
-      </article>
+    <div class="story-card-grid">
+      {% for movie in featured_movies %}
+        <article class="surface story-card">
+          <div class="story-card-head">
+            <span class="story-card-icon">{{ movie.poster_emoji }}</span>
+            <div>
+              <strong>{{ movie.title }}</strong>
+              <p>{{ movie.type|title }} • {{ movie.genre }}</p>
+            </div>
+          </div>
+          <p class="story-card-copy">{{ movie.description }}</p>
+          <div class="tag-cloud">
+            {% for tag in movie.mood_tags %}
+              <span>{{ tag }}</span>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
     </div>
   </section>
 
-  <section class="impact-grid home-impact-grid">
+  <section class="impact-grid home-impact-grid support-preview-grid">
     <article class="surface focus-card home-focus-card home-focus-card-primary" data-reveal>
-      <p class="eyebrow">Why it matters</p>
-      <h2>Built for health systems where pressure moves faster than capacity</h2>
-      <p class="subcopy">
-        HealHub fits referral-heavy settings like Nepal, where urban hospitals absorb the most complex
-        demand and every delay has a system-wide cost.
-      </p>
-      <div class="impact-stat-grid">
-        <div class="impact-stat">
-          <span class="meta-label">Outcome</span>
-          <strong>Lower wait pressure</strong>
-          <p>High-risk arrivals move up before queue delays compound.</p>
-        </div>
-        <div class="impact-stat">
-          <span class="meta-label">Outcome</span>
-          <strong>Better utilization</strong>
-          <p>Every available bed, clinician, and ICU slot is used more intentionally.</p>
-        </div>
+      <p class="eyebrow">Trusted therapists</p>
+      <h2>Human support that fits the emotional world of the user</h2>
+      <div class="stack-list therapist-preview-list">
+        {% for therapist in featured_therapists %}
+          <div class="mini-profile-card">
+            <div>
+              <strong>{{ therapist.name }}</strong>
+              <p>{{ therapist.specialty }} • {{ therapist.rating }}/5</p>
+            </div>
+            <span class="status-chip status-stable">{{ therapist.reviews }} reviews</span>
+          </div>
+        {% endfor %}
       </div>
+      <a class="btn btn-primary" href="{{ url_for('therapists_page') }}">View therapists</a>
     </article>
 
     <article class="surface focus-card home-focus-card home-focus-card-secondary" data-reveal>
-      <p class="eyebrow">Operational model</p>
-      <h2>Not just diagnose. Coordinate care across the whole network.</h2>
-      <ul class="clean-list clean-list-home">
-        <li>Detect urgency from intake severity and vital instability.</li>
-        <li>Compare hospitals by live availability and specialty fit.</li>
-        <li>Assign treatment, waiting, or redirection based on system pressure.</li>
-        <li>Explain every recommendation for clinicians and operations teams.</li>
-      </ul>
-      <div class="home-proof-row">
-        <span class="signal-chip signal-chip-primary">Explainable outputs</span>
-        <span class="signal-chip signal-chip-teal">Live capacity aware</span>
-        <span class="signal-chip signal-chip-amber">Transfer ready</span>
+      <p class="eyebrow">Safe community</p>
+      <h2>Support circles where people can say “me too” and feel less alone</h2>
+      <div class="stack-list therapist-preview-list">
+        {% for group in featured_groups %}
+          <div class="mini-profile-card">
+            <div>
+              <strong>{{ group.name }}</strong>
+              <p>{{ group.description }}</p>
+            </div>
+            <span class="status-chip status-neutral">{{ group.members }} members</span>
+          </div>
+        {% endfor %}
       </div>
-      <a class="btn btn-secondary" href="{{ url_for('platform_page') }}">Explore the Platform</a>
+      <a class="btn btn-secondary" href="{{ url_for('community_page') }}">Enter community</a>
     </article>
+  </section>
+
+  <section class="section-block home-ops-bridge" data-reveal>
+    <div class="section-head home-section-head">
+      <div>
+        <p class="eyebrow">Still included</p>
+        <h2>The original hospital command layer remains intact</h2>
+      </div>
+      <p class="subcopy">
+        Heal Hub still keeps its smart care coordination core for operations demos: triage scoring, hospital capacity, and live routing.
+      </p>
+    </div>
+
+    <div class="feature-grid home-feature-grid">
+      <article class="feature-card surface home-feature-card home-feature-card-primary">
+        <h3>Live AI dashboard</h3>
+        <p>Monitor the hospital network, reprioritize queues, and simulate surge scenarios without losing the new wellness narrative.</p>
+      </article>
+      <article class="feature-card surface home-feature-card home-feature-card-teal">
+        <h3>Medicine and mood tools</h3>
+        <p>Keep the working medicine search, mood check, and AI support pages as part of the wider care journey.</p>
+      </article>
+      <article class="feature-card surface home-feature-card home-feature-card-amber">
+        <h3>One polished story</h3>
+        <p>The demo now feels broader, warmer, and more memorable while preserving the original operational features.</p>
+      </article>
+    </div>
   </section>
 
   <section class="cta-band home-cta-band surface" data-reveal>
     <div class="home-cta-copy">
-      <p class="eyebrow">Get started</p>
-      <h2>Open the live HealHub command center</h2>
+      <p class="eyebrow">Start the demo</p>
+      <h2>Open the experience that best matches your role.</h2>
       <p class="subcopy">
-        Use the demo accounts to test intake, queue reshuffling, redirection, and surge response in minutes.
+        Patients can explore stories, support circles, and bookings. Doctors can review gentle insight summaries and care context.
       </p>
     </div>
     <div class="button-group home-cta-actions">
-      <a class="btn btn-primary" href="{{ url_for('login') }}">Open Login</a>
-      <a class="btn btn-ghost" href="{{ url_for('platform_page') }}">See the Platform</a>
+      <a class="btn btn-primary" href="{{ url_for('login') }}">Login to Demo</a>
+      <a class="btn btn-ghost" href="{{ url_for('safe_space_page') }}">Visit Safe Space</a>
     </div>
   </section>
 {% endblock %}

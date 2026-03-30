@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="dashboard-overview doctor-dashboard-hero" data-reveal>
+    <article class="surface dashboard-panel dashboard-intro-panel">
+      <div class="dashboard-intro-copy">
+        <div>
+          <p class="eyebrow">Doctor Portal</p>
+          <h1>{{ current_user.display_name }}</h1>
+        </div>
+        <p class="lead">Dashboard cleared and ready to rebuild.</p>
+        <p class="subcopy">The prescribing flow and data are still in the app, but this screen is now a clean slate so we can design it from scratch.</p>
+      </div>
+    </article>
+  </section>
+
+  <section class="dashboard-support-grid">
+    <article class="surface dashboard-panel dashboard-panel-full" data-reveal>
+      <div class="empty-state">
+        <h2>Blank starting point</h2>
+        <p>This doctor dashboard has been wiped back to a starter shell.</p>
+        <p>Tell me the first module you want here, and I will build it section by section.</p>
+      </div>
+    </article>
+  </section>
+{% endblock %}

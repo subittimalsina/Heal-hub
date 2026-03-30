@@ -76,7 +76,7 @@
     return `${Number(value || 0)}m`;
   }
 
-  function setSystemStatus(message, tone = "neutral", title = "HealHub operational status") {
+  function setSystemStatus(message, tone = "neutral", title = "Heal Hub operational status") {
     elements.insightBanner.textContent = message;
     elements.insightBanner.className = `notice-banner ${toneClass(tone)}`;
     elements.pulseTitle.textContent = title;
@@ -590,7 +590,7 @@
 
     if (snapshot.metrics.overloaded_hospitals > 0) {
       setSystemStatus(
-        "One or more hospitals are overloaded. HealHub is redistributing demand now.",
+        "One or more hospitals are overloaded. Heal Hub is redistributing demand now.",
         "critical",
         "Network strain rising",
       );

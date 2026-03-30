@@ -58,9 +58,24 @@
     const nav = document.getElementById("primary-nav");
     if (!toggle || !nav) return;
 
+    function closeNav() {
+      nav.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+
     toggle.addEventListener("click", () => {
       const open = nav.classList.toggle("is-open");
       toggle.setAttribute("aria-expanded", String(open));
+    });
+
+    nav.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", closeNav);
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 1180) {
+        closeNav();
+      }
     });
   }
 

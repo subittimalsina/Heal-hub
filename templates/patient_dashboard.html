@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="dashboard-overview patient-dashboard-hero" data-reveal>
+    <article class="surface dashboard-panel dashboard-intro-panel">
+      <div class="dashboard-intro-copy">
+        <div>
+          <p class="eyebrow">Patient Portal</p>
+          <h1>{{ portal_patient.display_name }}</h1>
+        </div>
+        <p class="lead">Dashboard cleared and ready to rebuild.</p>
+        <p class="subcopy">We kept the route and data intact. Now we can decide what this dashboard should include from the beginning.</p>
+      </div>
+    </article>
+  </section>
+
+  <section class="dashboard-support-grid">
+    <article class="surface dashboard-panel dashboard-panel-full" data-reveal>
+      <div class="empty-state">
+        <h2>Blank starting point</h2>
+        <p>This patient dashboard has been wiped back to a clean shell.</p>
+        <p>Tell me the first section you want, and I will build it here.</p>
+      </div>
+    </article>
+  </section>
+{% endblock %}

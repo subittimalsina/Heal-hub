@@ -1,6 +1,6 @@
-# HealHub
+# Heal Hub
 
-HealHub is a polished web application for the theme **"High-value health systems: leveraging Artificial Intelligence."**
+Heal Hub is a polished web application for the theme **"High-value health systems: leveraging Artificial Intelligence."**
 
 It is not a symptom checker. It is a **smart hospital operations and resource optimization platform** that simulates how AI can improve health system performance across multiple hospitals by:
 
@@ -43,7 +43,7 @@ requirements.txt
 
 Use the built-in demo accounts:
 
-- `admin / admin123`
+- `patient / patient123`
 - `doctor / doctor123`
 
 You can also use the **Demo Login** button on the login page.
@@ -66,7 +66,7 @@ You can also use the **Demo Login** button on the login page.
 
 ## Authentication flow
 
-HealHub uses simple Flask session-based authentication for hackathon demos:
+Heal Hub uses simple Flask session-based authentication for hackathon demos:
 
 1. A user logs in at `/login`
 2. Flask verifies the hardcoded demo credentials
@@ -80,7 +80,7 @@ This keeps the demo lightweight while still showing a real protected dashboard f
 
 ## How the AI logic works
 
-HealHub uses a lightweight, demo-friendly decision engine:
+Heal Hub uses a lightweight, demo-friendly decision engine:
 
 1. **Urgency scoring**
    - Scores each patient from `0-100`
@@ -97,7 +97,7 @@ HealHub uses a lightweight, demo-friendly decision engine:
    - Otherwise, the patient is queued or redirected
 
 4. **Smart redistribution**
-   - HealHub compares hospitals by live capacity, queue depth, ICU availability, and specialty fit
+   - Heal Hub compares hospitals by live capacity, queue depth, ICU availability, and specialty fit
    - If another hospital can reduce delay or absorb the case better, the system recommends a transfer automatically
 
 5. **Explainable AI**
@@ -140,6 +140,6 @@ python app.py
 
 ## pitch summary
 
-**HealHub** helps healthcare systems do more with less. Instead of diagnosing disease, it focuses on what hospitals struggle with every day: who should be treated first, where they should go, and how to prevent overload when resources are scarce.
+**Heal Hub** helps healthcare systems do more with less. Instead of diagnosing disease, it focuses on what hospitals struggle with every day: who should be treated first, where they should go, and how to prevent overload when resources are scarce.
 
-For contexts like Nepal, this matters because beds, ICU slots, and specialist attention are limited. HealHub shows how AI can coordinate the whole network, reduce wait times, improve utilization, and make system-level decisions transparent enough for clinicians and administrators to trust.
+For contexts like Nepal, this matters because beds, ICU slots, and specialist attention are limited. Heal Hub shows how AI can coordinate the whole network, reduce wait times, improve utilization, and make system-level decisions transparent enough for clinicians and administrators to trust.
