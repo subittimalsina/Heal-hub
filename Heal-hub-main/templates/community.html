@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="dashboard-overview feature-page-hero" data-reveal>
+    <article class="surface dashboard-panel dashboard-intro-panel">
+      <div class="hero-signal-row">
+        <span class="signal-chip signal-chip-primary">Community Support</span>
+        <span class="signal-chip signal-chip-teal">Warm, Moderated Spaces</span>
+        <span class="signal-chip signal-chip-amber">Demo Posts Included</span>
+      </div>
+      <div class="dashboard-intro-copy">
+        <div>
+          <p class="eyebrow">Belonging matters</p>
+          <h1>Find people who understand what you're carrying.</h1>
+        </div>
+        <p class="lead">
+          Heal Hub community circles are designed to reduce isolation, encourage safe sharing, and remind people that support can come from others who truly relate.
+        </p>
+      </div>
+
+      <div class="hub-stat-band">
+        <div class="hero-meta-card">
+          <span class="meta-label">Support circles</span>
+          <strong>{{ groups|length }}</strong>
+          <small>active spaces to explore</small>
+        </div>
+        <div class="hero-meta-card">
+          <span class="meta-label">Live discussions</span>
+          <strong>{{ posts|length }}</strong>
+          <small>threads visible right now</small>
+        </div>
+        {% if community_profile %}
+          <div class="hero-meta-card">
+            <span class="meta-label">Joined groups</span>
+            <strong>{{ community_profile.joined_groups|length }}</strong>
+            <small>circles in your support map</small>
+          </div>
+        {% endif %}
+      </div>
+    </article>
+
+    <aside class="dashboard-overview-side">
+      <article class="surface dashboard-panel dashboard-status-card">
+        <span class="meta-label">Selected space</span>
+        <strong>{{ selected_group.name if selected_group else "All conversations" }}</strong>
+        <p>{{ selected_group.description if selected_group else "Browse the most supportive recent posts across the community." }}</p>
+      </article>
+
+      {% if community_profile %}
+        <article class="surface dashboard-panel dashboard-status-card">
+          <span class="meta-label">Your support summary</span>
+          <strong>{{ community_profile.profile.support_received }} supportive reactions</strong>
+          <p>{{ community_profile.support_summary }}</p>
+        </article>
+      {% endif %}
+    </aside>
+  </section>
+
+  <section class="dashboard-support-grid">
+    <article class="surface dashboard-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Community channels</p>
+          <h2>Choose a circle that matches your moment</h2>
+        </div>
+      </div>
+      <div class="community-group-grid">
+        {% for group in groups %}
+          <a class="community-group-card {% if selected_group and selected_group.id == group.id %}active{% endif %}" href="{{ url_for('community_page', group=group.id) }}">
+            <div class="community-group-head">
+              <span class="community-group-icon">{{ group.icon }}</span>
+              <div>
+                <strong>{{ group.name }}</strong>
+                <p>{{ group.description }}</p>
+              </div>
+            </div>
+            <span class="status-chip status-neutral">{{ group.members }} members</span>
+          </a>
+        {% endfor %}
+      </div>
+    </article>
+
+    {% if community_profile %}
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Trending topics</p>
+            <h2>What people are connecting around</h2>
+          </div>
+        </div>
+        <div class="tag-cloud">
+          {% for topic in community_profile.trending_topics %}
+            <span>{{ topic }}</span>
+          {% endfor %}
+        </div>
+        {% if community_profile.recommended_groups %}
+          <p class="subcopy">Recommended next circles: {{ community_profile.recommended_groups|map(attribute='name')|join(", ") }}</p>
+        {% endif %}
+      </article>
+    {% endif %}
+  </section>
+
+  {% if is_logged_in %}
+    <section class="surface dashboard-panel community-composer" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Share how you feel</p>
+          <h2>Post something honest, gentle, or hopeful</h2>
+        </div>
+      </div>
+      <div class="community-compose-grid">
+        <label>
+          <span>Post to</span>
+          <select data-community-group>
+            {% for group in groups %}
+              <option value="{{ group.id }}" {% if selected_group and selected_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="compose-textarea">
+          <span>Your message</span>
+          <textarea rows="4" placeholder="Share what you're carrying, what helped today, or ask for support..." data-community-post></textarea>
+        </label>
+      </div>
+      <div class="button-group">
+        <button class="btn btn-primary" type="button" data-submit-post>Post to community</button>
+      </div>
+      <p class="subcopy" data-page-feedback>Warm, respectful sharing helps make the space feel safer for everyone.</p>
+    </section>
+  {% endif %}
+
+  <section class="community-post-list" data-reveal>
+    {% for post in posts %}
+      <article class="surface community-post-card">
+        <div class="community-post-head">
+          <div>
+            <strong>{{ post.author }}</strong>
+            <p>{{ post.timestamp }}</p>
+          </div>
+          <span class="status-chip status-neutral">
+            {{ groups|selectattr('id', 'equalto', post.group_id)|map(attribute='name')|first }}
+          </span>
+        </div>
+        <p class="community-post-copy">{{ post.content }}</p>
+        <div class="community-post-actions">
+          <button class="btn btn-ghost" type="button" data-support-post data-post-id="{{ post.id }}">Support • {{ post.likes }}</button>
+        </div>
+
+        {% if post.replies %}
+          <div class="reply-list">
+            {% for reply in post.replies %}
+              <article class="reply-card">
+                <strong>{{ reply.author }}</strong>
+                <p>{{ reply.content }}</p>
+                <small>{{ reply.timestamp }}</small>
+              </article>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if is_logged_in %}
+          <div class="reply-composer">
+            <textarea rows="2" placeholder="Write a supportive reply..." data-reply-input="{{ post.id }}"></textarea>
+            <button class="btn btn-secondary" type="button" data-reply-post data-post-id="{{ post.id }}">Reply</button>
+          </div>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}

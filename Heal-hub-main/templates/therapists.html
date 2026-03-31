@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="dashboard-overview feature-page-hero" data-reveal>
+    <article class="surface dashboard-panel dashboard-intro-panel">
+      <div class="hero-signal-row">
+        <span class="signal-chip signal-chip-primary">Doctor and Therapist Booking</span>
+        <span class="signal-chip signal-chip-teal">Soft Insight Friendly</span>
+        <span class="signal-chip signal-chip-amber">Simple Demo Flow</span>
+      </div>
+      <div class="dashboard-intro-copy">
+        <div>
+          <p class="eyebrow">Trusted support</p>
+          <h1>Book a therapist who matches the kind of support you need.</h1>
+        </div>
+        <p class="lead">
+          Browse experienced therapists and doctors by specialty, reviews, and availability, then book a lightweight demo appointment in seconds.
+        </p>
+      </div>
+
+      <div class="hub-stat-band">
+        <div class="hero-meta-card">
+          <span class="meta-label">Available profiles</span>
+          <strong>{{ therapists|length }}</strong>
+          <small>seeded care professionals</small>
+        </div>
+        <div class="hero-meta-card">
+          <span class="meta-label">Confirmed bookings</span>
+          <strong>{{ bookings|length }}</strong>
+          <small>for the current user</small>
+        </div>
+        <div class="hero-meta-card">
+          <span class="meta-label">Insight framing</span>
+          <strong>Soft, respectful</strong>
+          <small>used for understanding, not diagnosis</small>
+        </div>
+      </div>
+    </article>
+
+    <aside class="dashboard-overview-side">
+      <article class="surface dashboard-panel dashboard-status-card">
+        <span class="meta-label">Women-focused support</span>
+        <strong>{{ women_support_therapists[0].name }}</strong>
+        <p>{{ women_support_therapists[0].bio }}</p>
+      </article>
+
+      {% if movie_profile %}
+        <article class="surface dashboard-panel dashboard-status-card">
+          <span class="meta-label">Your story profile</span>
+          <strong>{{ movie_profile.top_category_labels|join(", ") or "Still exploring" }}</strong>
+          <p>Therapists can use these as gentle conversation starters if you choose to share them.</p>
+        </article>
+      {% endif %}
+    </aside>
+  </section>
+
+  <section class="dashboard-support-grid">
+    <article class="surface dashboard-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Why this feels thoughtful</p>
+          <h2>Interest-based therapeutic understanding</h2>
+        </div>
+      </div>
+      <p class="subcopy">
+        Heal Hub can show supportive patterns from story preferences, watched categories, and emotional themes so therapists understand
+        what inspires or comforts the user. These are soft insights only and should be used with consent and care.
+      </p>
+      {% if movie_profile %}
+        <div class="tag-cloud">
+          {% for label in movie_profile.top_category_labels %}
+            <span>{{ label }}</span>
+          {% endfor %}
+          {% for theme in movie_profile.mood_themes[:3] %}
+            <span>{{ theme }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <p class="subcopy" data-page-feedback>Booking stays simple for the demo, while keeping the framing respectful and supportive.</p>
+    </article>
+
+    <article class="surface dashboard-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Your bookings</p>
+          <h2>Upcoming sessions</h2>
+        </div>
+      </div>
+      {% if bookings %}
+        <div class="timeline-list">
+          {% for booking in bookings %}
+            <article class="timeline-card">
+              <div class="timeline-card-head">
+                <strong>{{ booking.therapist_name }}</strong>
+                <span class="status-chip status-stable">{{ booking.status|title }}</span>
+              </div>
+              <p>{{ booking.date }} • {{ booking.time }}</p>
+              <small>{{ booking.notes }}</small>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="notice-banner">No bookings yet. You can request one directly from any therapist card below.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="therapist-card-grid" data-reveal>
+    {% for therapist in therapists %}
+      <article class="surface therapist-card" data-therapist-card>
+        <div class="therapist-card-head">
+          <div class="therapist-avatar">{{ therapist.avatar_emoji }}</div>
+          <div>
+            <strong>{{ therapist.name }}</strong>
+            <p>{{ therapist.specialty }}</p>
+          </div>
+        </div>
+
+        <div class="therapist-stat-row">
+          <span class="status-chip status-stable">{{ therapist.rating }}/5</span>
+          <span class="status-chip status-neutral">{{ therapist.reviews }} reviews</span>
+          <span class="status-chip status-warning">{{ therapist.experience }}</span>
+        </div>
+
+        <p class="therapist-card-copy">{{ therapist.bio }}</p>
+        <p class="subcopy"><strong>Availability:</strong> {{ therapist.availability }}</p>
+
+        <div class="tag-cloud">
+          {% for tag in therapist.tags %}
+            <span>{{ tag }}</span>
+          {% endfor %}
+        </div>
+
+        {% if is_logged_in %}
+          <div class="booking-form-grid">
+            <label>
+              <span>Date</span>
+              <input type="date" value="2026-04-05" data-booking-date />
+            </label>
+            <label>
+              <span>Time</span>
+              <input type="text" value="10:00 AM" data-booking-time />
+            </label>
+            <label class="booking-notes-field">
+              <span>Notes for therapist</span>
+              <textarea rows="3" placeholder="What kind of support are you hoping for?" data-booking-notes></textarea>
+            </label>
+          </div>
+          <div class="button-group">
+            <button class="btn btn-primary" type="button" data-book-therapist data-therapist-id="{{ therapist.id }}">Book appointment</button>
+          </div>
+        {% else %}
+          <a class="btn btn-primary" href="{{ url_for('login', next=url_for('therapists_page')) }}">Login to book</a>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}

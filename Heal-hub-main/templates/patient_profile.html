@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="dashboard-overview feature-page-hero" data-reveal>
+    <article class="surface dashboard-panel dashboard-intro-panel">
+      <div class="hero-signal-row">
+        <span class="signal-chip signal-chip-primary">Patient Profile</span>
+        <span class="signal-chip signal-chip-teal">{{ patient_profile.avatar }} {{ patient_profile.display_name }}</span>
+        <span class="signal-chip signal-chip-amber">Connect & Share</span>
+      </div>
+      <div class="dashboard-intro-copy">
+        <div>
+          <p class="eyebrow">Meet a community member</p>
+          <h1>{{ patient_profile.display_name }}</h1>
+        </div>
+        <p class="lead">
+          {{ patient_profile.bio }}
+        </p>
+      </div>
+
+      <div class="hub-stat-band">
+        <div class="hero-meta-card">
+          <span class="meta-label">Member since</span>
+          <strong>{{ patient_profile.member_since }}</strong>
+          <small>Active in community</small>
+        </div>
+        <div class="hero-meta-card">
+          <span class="meta-label">Communities joined</span>
+          <strong>{{ patient_profile.joined_communities|length }}</strong>
+          <small>support circles</small>
+        </div>
+        <div class="hero-meta-card">
+          <span class="meta-label">Movies watched</span>
+          <strong>{{ patient_profile.movie_preferences.watched_count }}</strong>
+          <small>titles</small>
+        </div>
+      </div>
+    </article>
+
+    <aside class="dashboard-overview-side">
+      <article class="surface dashboard-panel dashboard-status-card">
+        <span class="meta-label">Location</span>
+        <strong>{{ patient_profile.location }}</strong>
+        <p>{{ patient_profile.display_name }} is from {{ patient_profile.location }}</p>
+      </article>
+
+      <article class="surface dashboard-panel dashboard-status-card">
+        <span class="meta-label">Connection status</span>
+        <strong>{{ connection_status|title }}</strong>
+        {% if connection_status == "none" %}
+          <button class="btn btn-primary" onclick="sendConnectionRequest()">Send Friend Request</button>
+        {% elif connection_status == "request_sent" %}
+          <p>Request pending...</p>
+        {% elif connection_status == "request_received" %}
+          <button class="btn btn-primary" onclick="acceptConnection()">Accept Connection</button>
+        {% elif connection_status == "connected" %}
+          <button class="btn btn-primary" onclick="goToMessage()">Send Message</button>
+        {% endif %}
+      </article>
+    </aside>
+  </section>
+
+  <section class="dashboard-support-grid">
+    <!-- Interests & Badges -->
+    <article class="surface dashboard-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">About the member</p>
+          <h2>Interests & Badges</h2>
+        </div>
+      </div>
+
+      <div style="padding: 1rem 0;">
+        <p style="margin-bottom: 1rem;"><strong>Health interests:</strong></p>
+        <div class="tag-row" style="margin-bottom: 1rem;">
+          {% for interest in patient_profile.interests %}
+            <span class="tag tag-info">{{ interest|title }}</span>
+          {% endfor %}
+        </div>
+
+        {% if patient_profile.conditions %}
+          <p style="margin-bottom: 1rem;"><strong>Conditions mentioned:</strong></p>
+          <div class="tag-row" style="margin-bottom: 1rem;">
+            {% for condition in patient_profile.conditions %}
+              <span class="tag tag-warning" style="opacity: 0.8;">{{ condition }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if patient_profile.badges %}
+          <p style="margin-bottom: 1rem;"><strong>Community badges:</strong></p>
+          <div class="tag-row">
+            {% for badge in patient_profile.badges %}
+              <span class="tag tag-success">✓ {{ badge }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </article>
+
+    <!-- Shared Communities -->
+    {% if shared_communities %}
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">What you have in common</p>
+            <h2>Shared Support Circles</h2>
+          </div>
+        </div>
+        <div style="display: grid; gap: 0.75rem;">
+          {% for community in shared_communities %}
+            <div class="community-shared-item" style="padding: 0.75rem; border: 1px solid rgba(0,0,0,0.1); border-radius: 0.5rem; display: flex; align-items: center; gap: 0.75rem;">
+              <span style="font-size: 1.5rem;">{{ community.icon }}</span>
+              <div style="flex: 1;">
+                <strong>{{ community.name }}</strong>
+                <p style="font-size: 0.875rem; opacity: 0.7; margin: 0;">{{ community.description }}</p>
+              </div>
+              <span style="background: rgba(0,0,0,0.05); padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem;">
+                {{ community.members }} members
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      </article>
+    {% endif %}
+
+    <!-- Movie Preferences -->
+    <article class="surface dashboard-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Entertainment journey</p>
+          <h2>Favorite Movies & Series</h2>
+        </div>
+      </div>
+      <div style="padding: 1rem 0;">
+        {% if patient_profile.movie_preferences.favorites %}
+          <p style="margin-bottom: 1rem;"><strong>Favorite titles:</strong></p>
+          <ul style="list-style: none; padding: 0; margin-bottom: 1rem;">
+            {% for title in patient_profile.movie_preferences.favorites %}
+              <li style="padding: 0.5rem 0; border-bottom: 1px solid rgba(0,0,0,0.05);">🎬 {{ title }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        {% if patient_profile.movie_preferences.interested_in %}
+          <p style="margin-bottom: 1rem;"><strong>Interested in:</strong></p>
+          <div class="tag-row">
+            {% for interest in patient_profile.movie_preferences.interested_in %}
+              <span class="tag tag-teal">{{ interest|title }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </article>
+
+    <!-- Shared Movie Interests -->
+    {% if shared_interests %}
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Story connection</p>
+            <h2>Shared Story Interests</h2>
+          </div>
+        </div>
+        <p style="margin-bottom: 1rem;">You both love stories about:</p>
+        <div class="tag-row">
+          {% for interest in shared_interests %}
+            <span class="tag tag-primary" style="background: #e8f4f8; color: #0047AB;">
+              ✓ {{ interest|title }}
+            </span>
+          {% endfor %}
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.875rem; opacity: 0.7;">You could chat about great movies and healing stories together!</p>
+      </article>
+    {% endif %}
+  </section>
+
+  <section class="dashboard-footer-band">
+    <article class="surface dashboard-panel">
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        {% if connection_status == "none" %}
+          <button class="btn btn-primary" onclick="sendConnectionRequest()">
+            Add as Friend
+          </button>
+        {% elif connection_status == "request_sent" %}
+          <button class="btn btn-secondary" disabled>
+            Request Sent
+          </button>
+        {% elif connection_status == "request_received" %}
+          <button class="btn btn-primary" onclick="acceptConnection()">
+            Accept friend request
+          </button>
+        {% elif connection_status == "connected" %}
+          <button class="btn btn-primary" onclick="goToMessage()">
+            💬 Send Message
+          </button>
+          <button class="btn btn-secondary" onclick="window.history.back()">
+            Back
+          </button>
+        {% endif %}
+      </div>
+    </article>
+  </section>
+
+  <script>
+    function sendConnectionRequest() {
+      fetch('/api/send-connection-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_username: '{{ patient_profile.username }}' })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          location.reload();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(e => alert('Error: ' + e.message));
+    }
+
+    function acceptConnection() {
+      fetch('/api/accept-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_username: '{{ patient_profile.username }}' })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.message);
+          location.reload();
+        } else {
+          alert('Error: ' + data.message);
+        }
+      })
+      .catch(e => alert('Error: ' + e.message));
+    }
+
+    function goToMessage() {
+      window.location.href = '/messages?user={{ patient_profile.username }}';
+    }
+  </script>
+{% endblock %}

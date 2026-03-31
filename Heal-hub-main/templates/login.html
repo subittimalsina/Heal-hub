@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="auth-layout">
+    <article class="surface auth-brand-panel" data-reveal>
+      <div class="hero-signal-row">
+        <span class="signal-chip signal-chip-primary">Patient + Doctor</span>
+        <span class="signal-chip signal-chip-teal">Stories + Support + Smart Care</span>
+      </div>
+      <p class="eyebrow">Secure Heal Hub access</p>
+      <h1>Choose the portal that matches your role.</h1>
+      <p class="lead">Open the expanded Heal Hub demo with healing stories, therapist booking, community support, women's safety resources, and the original hospital dashboard all preserved.</p>
+
+      <div class="demo-user-grid">
+        {% for user in demo_users %}
+          <article class="demo-user-card">
+            <div>
+              <strong>{{ user.display_name }}</strong>
+              <p>{{ user.headline }}</p>
+            </div>
+            <div class="credential-row"><span>Role</span><code>{{ user.role }}</code></div>
+            <div class="credential-row"><span>Username</span><code>{{ user.username }}</code></div>
+            <div class="credential-row"><span>Password</span><code>{{ user.password }}</code></div>
+          </article>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="surface auth-form-panel" data-reveal>
+      <p class="eyebrow">Login</p>
+      <h2>Open your dashboard</h2>
+      <p class="subcopy">Pick the matching role first. Patients see the wellness dashboard, and doctors see insight and booking tools.</p>
+
+      <form class="auth-form" action="{{ url_for('login') }}" method="post">
+        <input type="hidden" name="next" value="{{ next_url }}" />
+
+        <label>
+          <span>Role</span>
+          <select name="role">
+            <option value="patient">Patient</option>
+            <option value="doctor">Doctor</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Username</span>
+          <input type="text" name="username" placeholder="Enter your username" required />
+        </label>
+
+        <label>
+          <span>Password</span>
+          <input type="password" name="password" placeholder="Enter your password" required />
+        </label>
+
+        <label class="checkbox-row">
+          <input type="checkbox" name="remember_me" value="1" />
+          <span>Remember me on this device</span>
+        </label>
+
+        <div class="button-group">
+          <button class="btn btn-primary" type="submit">Login</button>
+          <button class="btn btn-secondary" type="submit" name="demo_login" value="1">Quick Access</button>
+        </div>
+      </form>
+
+      <a class="text-link" href="{{ url_for('landing_page') }}">Back to home</a>
+    </article>
+  </section>
+{% endblock %}
