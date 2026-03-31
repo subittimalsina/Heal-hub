@@ -1,7 +1,0 @@
-Place your website logo in this folder.
-
-Recommended filename:
-logo.png
-
-Full path:
-/home/subit/heal hub/static/images/logo.png

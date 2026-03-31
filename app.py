@@ -1577,7 +1577,7 @@ def landing_page() -> str:
         active_page="home",
         body_class="page-landing",
         page_id="home",
-        page_title="Heal Hub | Stories, Support, and Smarter Care",
+        page_title="Heal Hub | Start Here",
         platform_snapshot=build_platform_snapshot(),
         featured_movies=MOVIES_DATA[:4],
         featured_therapists=THERAPISTS_DATA[:3],
@@ -2057,6 +2057,76 @@ MOVIES_DATA: list[dict[str, Any]] = [
         "mood_tags": ["mental health", "connection", "healing"],
         "poster_emoji": "🌙",
     },
+    {
+        "id": "mov-017", "title": "Ocean's Eleven", "type": "movie",
+        "genre": "Heist, Comedy", "year": 2001,
+        "categories": ["heist", "crime", "comedy"],
+        "description": "Danny Ocean assembles a sharp team to pull off a high-risk casino heist in Las Vegas.",
+        "why_helps": "A stylish, team-driven story that can feel energizing when you need confidence, wit, and momentum.",
+        "mood_tags": ["teamwork", "confidence", "strategy"],
+        "poster_emoji": "🕴️",
+        "poster_image": "images/20260203-105153313.webp",
+    },
+    {
+        "id": "mov-018", "title": "Final Destination", "type": "movie",
+        "genre": "Supernatural Horror", "year": 2000,
+        "categories": ["horror", "thriller", "supernatural"],
+        "description": "After escaping a deadly premonition, a group of teens are pursued by a mysterious force of fate.",
+        "why_helps": "For thriller fans, it delivers high tension and suspenseful pacing that can create a strong adrenaline release.",
+        "mood_tags": ["suspense", "survival", "adrenaline"],
+        "poster_emoji": "💀",
+        "poster_image": "images/88c987248d96.webp",
+    },
+    {
+        "id": "mov-019", "title": "Aadu 3: One Last Ride - Part 1", "type": "movie",
+        "genre": "Fantasy, Comedy", "year": 2026,
+        "categories": ["fantasy", "comedy", "action"],
+        "description": "The third Aadu chapter pushes Shaji Pappan and his crew into chaotic, time-bending comedy adventure.",
+        "why_helps": "Its energetic humor and absurd momentum can lift mood when you want something playful and loud.",
+        "mood_tags": ["chaos comedy", "adventure", "fun reset"],
+        "poster_emoji": "🐐",
+        "poster_image": "images/8e9c8deaf00f.webp",
+    },
+    {
+        "id": "mov-020", "title": "The Bride!", "type": "movie",
+        "genre": "Gothic Romance", "year": 2026,
+        "categories": ["gothic", "romance", "horror"],
+        "description": "A modern gothic take inspired by Bride of Frankenstein, blending haunting emotion with dark romance.",
+        "why_helps": "Works for viewers who process emotion through intense atmosphere, symbolism, and dramatic character arcs.",
+        "mood_tags": ["dark romance", "identity", "intense mood"],
+        "poster_emoji": "🧟‍♀️",
+        "poster_image": "images/bgchkvjg25t1e46otfki.webp",
+    },
+    {
+        "id": "mov-021", "title": "Malcolm in the Middle: Life's Still Unfair", "type": "series",
+        "genre": "Sitcom, Comedy", "year": 2026,
+        "categories": ["sitcom", "family", "comedy"],
+        "description": "A four-part comedy revival that returns Malcolm and his family to their signature chaotic dynamic.",
+        "why_helps": "A light family-comedy option when you need laughs, familiarity, and low-pressure comfort.",
+        "mood_tags": ["nostalgia", "family chaos", "comfort laugh"],
+        "poster_emoji": "📺",
+        "poster_image": "images/malcolm-in-the-middle-movie-poster_1767025507.webp",
+    },
+    {
+        "id": "mov-022", "title": "Dhurandhar", "type": "movie",
+        "genre": "Spy Action Thriller", "year": 2025,
+        "categories": ["spy", "action", "thriller"],
+        "description": "An espionage thriller led by Ranveer Singh, built around covert missions, high stakes, and conflict.",
+        "why_helps": "Best when you want fast, high-intensity focus with action-heavy pacing and tension.",
+        "mood_tags": ["high stakes", "mission tension", "intense pace"],
+        "poster_emoji": "🕵️",
+        "poster_image": "images/qevfn4ejkplkdzqk0blr.webp",
+    },
+    {
+        "id": "mov-023", "title": "Jesus Revolution", "type": "movie",
+        "genre": "Christian Drama", "year": 2023,
+        "categories": ["faith", "drama", "inspiration"],
+        "description": "A coming-of-age faith drama set during the Jesus movement in late 1960s California.",
+        "why_helps": "Offers hopeful themes around belonging, purpose, and spiritual reflection for viewers who seek that lens.",
+        "mood_tags": ["hope", "purpose", "community"],
+        "poster_emoji": "✝️",
+        "poster_image": "images/w24t9qw8l7h2bquozv5h.webp",
+    },
 ]
 
 # In-memory user movie interactions (for demo)
@@ -2093,6 +2163,9 @@ USER_MOVIE_DATA: dict[str, dict[str, Any]] = {
 MOVIE_CATEGORIES = [
     "motivation", "healing", "self-growth", "inner child", "friendship",
     "women empowerment", "life struggles", "mental wellness", "inspiration",
+    "heist", "crime", "comedy", "horror", "thriller", "supernatural",
+    "fantasy", "action", "gothic", "romance", "sitcom", "family", "spy",
+    "faith", "drama",
 ]
 
 
@@ -2105,6 +2178,9 @@ def movies_page() -> str:
         filtered = [m for m in filtered if category in m["categories"]]
     if search_q:
         filtered = [m for m in filtered if search_q in m["title"].lower() or search_q in m["description"].lower()]
+
+    # Prioritize entries that have uploaded poster images so new poster-based movies surface first.
+    filtered = sorted(filtered, key=lambda movie: 0 if movie.get("poster_image") else 1)
 
     user = session.get("user")
     user_data = {}
@@ -2441,6 +2517,147 @@ USER_COMMUNITY_DATA: dict[str, dict[str, Any]] = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════
+# PART 4.5 — PATIENT PROFILES, MESSAGING & CONNECTIONS
+# ═══════════════════════════════════════════════════════════════
+
+PATIENT_PROFILES: dict[str, dict[str, Any]] = {
+    "patient": {
+        "username": "patient",
+        "display_name": "Aasha G.",
+        "age": 74,
+        "avatar": "👵",
+        "bio": "Seeking steady healing and supportive community. Love stories with heart and family themes.",
+        "location": "Kathmandu",
+        "interests": ["healing", "inner child", "self-growth", "mental wellness", "family"],
+        "conditions": ["Hypertension", "Type 2 diabetes risk"],
+        "joined_communities": ["grp-001", "grp-003", "grp-005"],
+        "movie_preferences": {
+            "favorites": ["Coco", "Encanto", "Ted Lasso"],
+            "watched_count": 13,
+            "interested_in": ["healing", "women empowerment", "self-growth"],
+        },
+        "connection_status": "Open to friendship",
+        "badges": ["Active Listener", "Community Helper", "Story Lover"],
+        "member_since": "2026-01-15",
+    },
+    "riya-demo": {
+        "username": "riya-demo",
+        "display_name": "Riya T.",
+        "age": 31,
+        "avatar": "👩‍💼",
+        "bio": "Recovering from burnout. Looking for like-minded people navigating life transitions.",
+        "location": "Pokhara",
+        "interests": ["self-growth", "motivation", "women empowerment", "travel"],
+        "conditions": ["Burnout", "Sleep issues"],
+        "joined_communities": ["grp-004", "grp-005", "grp-003"],
+        "movie_preferences": {
+            "favorites": ["Wild", "Eat Pray Love", "The Secret Life of Walter Mitty"],
+            "watched_count": 8,
+            "interested_in": ["self-growth", "women empowerment"],
+        },
+        "connection_status": "Open to friendship",
+        "badges": ["Self-Care Advocate", "Community Builder"],
+        "member_since": "2026-02-01",
+    },
+    "mina-demo": {
+        "username": "mina-demo",
+        "display_name": "Mina R.",
+        "age": 28,
+        "avatar": "🎨",
+        "bio": "Artist & creative healer. Finding joy in connection and creative expression.",
+        "location": "Kathmandu",
+        "interests": ["inner child", "healing", "friendship", "creativity"],
+        "conditions": ["Grief", "Social anxiety"],
+        "joined_communities": ["grp-001", "grp-006", "grp-005"],
+        "movie_preferences": {
+            "favorites": ["Coco", "Encanto", "Heartstopper"],
+            "watched_count": 11,
+            "interested_in": ["healing", "inner child"],
+        },
+        "connection_status": "Open to friendship",
+        "badges": ["Creative Connector", "Empathy Champion"],
+        "member_since": "2026-02-10",
+    },
+    "pema-demo": {
+        "username": "pema-demo",
+        "display_name": "Pema S.",
+        "age": 35,
+        "avatar": "👩",
+        "bio": "Supporting others through anxiety and building brave communities.",
+        "location": "Lalitpur",
+        "interests": ["mental wellness", "anxiety support", "friendship", "mindfulness"],
+        "conditions": ["Anxiety disorder"],
+        "joined_communities": ["grp-001", "grp-006"],
+        "movie_preferences": {
+            "favorites": ["Soul", "Heartstopper", "Good Will Hunting"],
+            "watched_count": 9,
+            "interested_in": ["mental wellness", "healing"],
+        },
+        "connection_status": "Open to friendship",
+        "badges": ["Anxiety Warrior", "Supportive Friend"],
+        "member_since": "2026-01-25",
+    },
+}
+
+MESSAGES_DATA: list[dict[str, Any]] = [
+    {
+        "id": "msg-001",
+        "from_user": "riya-demo",
+        "to_user": "patient",
+        "from_display": "Riya T.",
+        "content": "Hi Aasha! I loved your post about finding peace with uncertainty. It really resonated with me.",
+        "timestamp": "2026-03-29 14:30",
+        "read": True,
+    },
+    {
+        "id": "msg-002",
+        "from_user": "patient",
+        "to_user": "riya-demo",
+        "from_display": "Aasha G.",
+        "content": "Thank you so much! I'd love to hear about your story too. Would be nice to connect.",
+        "timestamp": "2026-03-29 15:45",
+        "read": True,
+    },
+    {
+        "id": "msg-003",
+        "from_user": "mina-demo",
+        "to_user": "patient",
+        "from_display": "Mina R.",
+        "content": "Your thoughts about stories helping with healing really inspired me. Want to chat about favorite movies? 🎬",
+        "timestamp": "2026-03-28 10:20",
+        "read": False,
+    },
+]
+
+USER_CONNECTIONS: dict[str, dict[str, Any]] = {
+    "patient": {
+        "friends": ["riya-demo", "mina-demo"],
+        "requests_received": ["pema-demo"],
+        "requests_sent": [],
+        "blocked": [],
+    },
+    "riya-demo": {
+        "friends": ["patient"],
+        "requests_received": [],
+        "requests_sent": [],
+        "blocked": [],
+    },
+    "mina-demo": {
+        "friends": ["patient"],
+        "requests_received": [],
+        "requests_sent": [],
+        "blocked": [],
+    },
+    "pema-demo": {
+        "friends": [],
+        "requests_received": [],
+        "requests_sent": ["patient"],
+        "blocked": [],
+    },
+}
+
+
 @app.get("/community")
 def community_page() -> str:
     group_id = request.args.get("group", "").strip()
@@ -2539,6 +2756,319 @@ def community_react() -> Any:
 
     post["likes"] = post.get("likes", 0) + 1
     return jsonify({"success": True, "likes": post["likes"]})
+
+
+@app.post("/api/join-community")
+@login_required
+def join_community() -> Any:
+    user = session.get("user", {})
+    username = user.get("username", "patient")
+    payload = request.get_json(silent=True) or {}
+    group_id = payload.get("group_id", "")
+
+    if username in PATIENT_PROFILES:
+        profile = PATIENT_PROFILES[username]
+        if group_id not in profile.get("joined_communities", []):
+            profile.setdefault("joined_communities", []).append(group_id)
+
+    community = USER_COMMUNITY_DATA.setdefault(
+        username,
+        {"joined_groups": [], "posts_count": 0, "support_given": 0, "support_received": 0, "comfort_topics": []},
+    )
+    if group_id not in community.get("joined_groups", []):
+        community.setdefault("joined_groups", []).append(group_id)
+
+    group = next((g for g in COMMUNITY_GROUPS if g["id"] == group_id), None)
+    return jsonify({
+        "success": True,
+        "message": f"You've joined {group['name'] if group else 'the community'}!",
+        "group": group,
+    })
+
+
+@app.get("/patients")
+@login_required
+def browse_patients() -> str:
+    """Browse and discover other patients in the community."""
+    current_user = session.get("user", {})
+    current_username = current_user.get("username", "patient")
+
+    all_patients = [
+        profile for username, profile in PATIENT_PROFILES.items()
+        if username != current_username
+    ]
+
+    my_connections = USER_CONNECTIONS.get(current_username, {
+        "friends": [],
+        "requests_sent": [],
+        "requests_received": [],
+        "blocked": [],
+    })
+
+    for patient in all_patients:
+        patient_username = patient.get("username")
+        if patient_username in my_connections.get("friends", []):
+            patient["connection_status"] = "Connected"
+        elif patient_username in my_connections.get("requests_sent", []):
+            patient["connection_status"] = "Request Sent"
+        elif patient_username in my_connections.get("requests_received", []):
+            patient["connection_status"] = "Request Received"
+
+    search_q = request.args.get("q", "").strip().lower()
+    interest = request.args.get("interest", "").strip().lower()
+
+    if search_q:
+        all_patients = [
+            p for p in all_patients
+            if search_q in p.get("display_name", "").lower() or
+               search_q in p.get("bio", "").lower()
+        ]
+
+    if interest:
+        all_patients = [
+            p for p in all_patients
+            if interest in [i.lower() for i in p.get("interests", [])]
+        ]
+
+    return render_template(
+        "patients_directory.html",
+        active_page="patients",
+        body_class="page-patients",
+        page_id="patients-directory",
+        page_title="Patient Directory | Heal Hub",
+        patients=all_patients,
+        current_user=current_user,
+        search_q=search_q,
+        selected_interest=interest,
+        my_connections=my_connections,
+    )
+
+
+@app.get("/patient/<username>")
+@login_required
+def view_patient_profile(username: str) -> Any:
+    """View another patient's profile."""
+    current_user = session.get("user", {})
+    current_username = current_user.get("username", "patient")
+
+    if username == current_username:
+        return redirect(url_for("patient_dashboard_page"))
+
+    patient = PATIENT_PROFILES.get(username)
+    if not patient:
+        flash("Patient profile not found.", "error")
+        return redirect(url_for("browse_patients"))
+
+    my_connections = USER_CONNECTIONS.get(current_username, {
+        "friends": [],
+        "requests_sent": [],
+        "requests_received": [],
+        "blocked": [],
+    })
+
+    connection_status = "none"
+    if username in my_connections.get("friends", []):
+        connection_status = "connected"
+    elif username in my_connections.get("requests_sent", []):
+        connection_status = "request_sent"
+    elif username in my_connections.get("requests_received", []):
+        connection_status = "request_received"
+
+    patient_communities = set(patient.get("joined_communities", []))
+    current_communities = set(
+        PATIENT_PROFILES.get(current_username, {}).get("joined_communities", [])
+    )
+    shared_group_ids = patient_communities.intersection(current_communities)
+    shared_communities = [
+        g for g in COMMUNITY_GROUPS if g["id"] in shared_group_ids
+    ]
+
+    patient_movie_interests = set(patient.get("movie_preferences", {}).get("interested_in", []))
+    current_movie_interests = set(
+        PATIENT_PROFILES.get(current_username, {}).get("interests", [])
+    )
+    shared_interests = patient_movie_interests.intersection(current_movie_interests)
+
+    return render_template(
+        "patient_profile.html",
+        active_page="patients",
+        body_class="page-patient-profile",
+        page_id="patient-profile",
+        page_title=f"{patient['display_name']}'s Profile | Heal Hub",
+        patient_profile=patient,
+        current_user=current_user,
+        connection_status=connection_status,
+        shared_communities=shared_communities,
+        shared_interests=list(shared_interests),
+        my_connections=my_connections,
+    )
+
+
+@app.post("/api/send-connection-request")
+@login_required
+def send_connection_request() -> Any:
+    """Send a friend request to another patient."""
+    current_user = session.get("user", {})
+    current_username = current_user.get("username", "patient")
+    payload = request.get_json(silent=True) or {}
+    target_username = payload.get("target_username", "")
+
+    if target_username == current_username:
+        return jsonify({"success": False, "message": "Cannot send request to yourself."}), 400
+
+    if target_username not in PATIENT_PROFILES:
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    my_connections = USER_CONNECTIONS.setdefault(current_username, {
+        "friends": [],
+        "requests_sent": [],
+        "requests_received": [],
+        "blocked": [],
+    })
+    target_connections = USER_CONNECTIONS.setdefault(target_username, {
+        "friends": [],
+        "requests_sent": [],
+        "requests_received": [],
+        "blocked": [],
+    })
+
+    if target_username in my_connections.get("friends", []):
+        return jsonify({"success": False, "message": "Already connected with this user."}), 400
+
+    if target_username in my_connections.get("requests_sent", []):
+        return jsonify({"success": False, "message": "Request already sent."}), 400
+
+    if target_username not in my_connections.get("requests_sent", []):
+        my_connections.setdefault("requests_sent", []).append(target_username)
+    if current_username not in target_connections.get("requests_received", []):
+        target_connections.setdefault("requests_received", []).append(current_username)
+
+    return jsonify({
+        "success": True,
+        "message": f"Connection request sent to {PATIENT_PROFILES[target_username]['display_name']}!",
+    })
+
+
+@app.post("/api/accept-connection")
+@login_required
+def accept_connection() -> Any:
+    """Accept a friend request."""
+    current_user = session.get("user", {})
+    current_username = current_user.get("username", "patient")
+    payload = request.get_json(silent=True) or {}
+    from_username = payload.get("from_username", "")
+
+    my_connections = USER_CONNECTIONS.setdefault(current_username, {
+        "friends": [],
+        "requests_sent": [],
+        "requests_received": [],
+        "blocked": [],
+    })
+    from_connections = USER_CONNECTIONS.setdefault(from_username, {
+        "friends": [],
+        "requests_sent": [],
+        "requests_received": [],
+        "blocked": [],
+    })
+
+    if from_username in my_connections.get("requests_received", []):
+        my_connections["requests_received"].remove(from_username)
+    if current_username in from_connections.get("requests_sent", []):
+        from_connections["requests_sent"].remove(current_username)
+
+    if from_username not in my_connections.get("friends", []):
+        my_connections.setdefault("friends", []).append(from_username)
+    if current_username not in from_connections.get("friends", []):
+        from_connections.setdefault("friends", []).append(current_username)
+
+    return jsonify({
+        "success": True,
+        "message": f"Connected with {PATIENT_PROFILES[from_username]['display_name']}!",
+    })
+
+
+@app.post("/api/send-message")
+@login_required
+def send_message() -> Any:
+    """Send a message to another patient."""
+    current_user = session.get("user", {})
+    current_username = current_user.get("username", "patient")
+    payload = request.get_json(silent=True) or {}
+    to_username = payload.get("to_username", "")
+    content = payload.get("content", "").strip()
+
+    if not content:
+        return jsonify({"success": False, "message": "Message cannot be empty."}), 400
+
+    if to_username == current_username:
+        return jsonify({"success": False, "message": "Cannot message yourself."}), 400
+
+    if to_username not in PATIENT_PROFILES:
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    my_connections = USER_CONNECTIONS.get(current_username, {})
+    if to_username not in my_connections.get("friends", []):
+        return jsonify({"success": False, "message": "You must be connected to message this user."}), 403
+
+    message = {
+        "id": f"msg-{uuid4().hex[:8]}",
+        "from_user": current_username,
+        "to_user": to_username,
+        "from_display": current_user.get("display_name", "Anonymous"),
+        "content": content,
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        "read": False,
+    }
+    MESSAGES_DATA.append(message)
+
+    return jsonify({
+        "success": True,
+        "message": "Message sent!",
+        "message_obj": message,
+    })
+
+
+@app.get("/messages")
+@login_required
+def view_messages() -> str:
+    """View all messages for current user."""
+    current_user = session.get("user", {})
+    current_username = current_user.get("username", "patient")
+
+    my_messages = [
+        msg for msg in MESSAGES_DATA
+        if msg.get("to_user") == current_username or msg.get("from_user") == current_username
+    ]
+
+    conversations: dict[str, dict[str, Any]] = {}
+    for msg in sorted(my_messages, key=lambda m: m.get("timestamp", ""), reverse=True):
+        partner = msg.get("from_user") if msg.get("to_user") == current_username else msg.get("to_user")
+        if partner not in conversations:
+            partner_profile = PATIENT_PROFILES.get(partner)
+            conversations[partner] = {
+                "partner_username": partner,
+                "partner_profile": partner_profile,
+                "messages": [],
+                "unread_count": 0,
+            }
+
+        conversations[partner]["messages"].append(msg)
+        if msg.get("to_user") == current_username and not msg.get("read"):
+            conversations[partner]["unread_count"] += 1
+
+    for msg in my_messages:
+        if msg.get("to_user") == current_username:
+            msg["read"] = True
+
+    return render_template(
+        "messages.html",
+        active_page="messages",
+        body_class="page-messages",
+        page_id="messages",
+        page_title="Messages | Heal Hub",
+        conversations=conversations,
+        current_user=current_user,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

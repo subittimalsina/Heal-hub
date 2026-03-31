@@ -57,6 +57,11 @@
     const toggle = document.querySelector("[data-nav-toggle]");
     const nav = document.getElementById("primary-nav");
     if (!toggle || !nav) return;
+    const navShell = nav.closest(".nav-shell");
+
+    function isMobileNav() {
+      return window.innerWidth <= 1320;
+    }
 
     function closeNav() {
       nav.classList.remove("is-open");
@@ -72,8 +77,21 @@
       link.addEventListener("click", closeNav);
     });
 
+    document.addEventListener("click", (event) => {
+      if (!isMobileNav()) return;
+      if (!nav.classList.contains("is-open")) return;
+      if (navShell && navShell.contains(event.target)) return;
+      closeNav();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeNav();
+      }
+    });
+
     window.addEventListener("resize", () => {
-      if (window.innerWidth > 1180) {
+      if (!isMobileNav()) {
         closeNav();
       }
     });

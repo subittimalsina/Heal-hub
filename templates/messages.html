@@ -2,9 +2,7 @@
 
 {% block content %}
 <div class="messages-container">
-  <!-- Sidebar with conversation list -->
   <div class="messages-sidebar">
-    <!-- Header -->
     <div class="messages-header">
       <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700;">Chats</h2>
       <div class="messages-header-icons">
@@ -13,12 +11,10 @@
       </div>
     </div>
 
-    <!-- Search Bar -->
     <div class="messages-search">
       <input type="text" placeholder="Search Messenger" class="search-input" id="chatSearch">
     </div>
 
-    <!-- Tabs -->
     <div class="messages-tabs">
       <button class="tab-btn active" data-tab="all">All</button>
       <button class="tab-btn" data-tab="unread">Unread</button>
@@ -26,7 +22,6 @@
       <button class="tab-btn" data-tab="communities">Communities</button>
     </div>
 
-    <!-- Conversations List -->
     <div class="conversations-list">
       {% if conversations %}
         {% for partner_username, convo in conversations.items() %}
@@ -37,7 +32,7 @@
                 <div class="online-indicator"></div>
               {% endif %}
             </div>
-            
+
             <div class="conversation-content">
               <div class="conversation-name-row">
                 <span class="conversation-name">{{ convo.partner_profile.display_name }}</span>
@@ -76,7 +71,6 @@
       {% endif %}
     </div>
 
-    <!-- See all link -->
     {% if conversations %}
       <div class="conversations-footer">
         <a href="#" class="see-all-link">See all in Messenger</a>
@@ -84,7 +78,6 @@
     {% endif %}
   </div>
 
-  <!-- Main content area (for future chat display) -->
   <div class="messages-main">
     <div class="empty-main-state">
       <p>Select a conversation to start messaging</p>
@@ -331,7 +324,6 @@
     color: #999;
   }
 
-  /* Scrollbar styling */
   .conversations-list::-webkit-scrollbar {
     width: 6px;
   }
@@ -367,7 +359,6 @@
 </style>
 
 <script>
-  // Search functionality
   document.getElementById('chatSearch').addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();
     const conversations = document.querySelectorAll('.conversation-item');
@@ -377,12 +368,10 @@
     });
   });
 
-  // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      // Add tab filtering logic here if needed
     });
   });
 </script>

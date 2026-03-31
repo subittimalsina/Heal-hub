@@ -47,6 +47,10 @@
             <a class="nav-link {% if active_page == 'movies' %}active{% endif %}" href="{{ url_for('movies_page') }}">Stories</a>
             <a class="nav-link {% if active_page == 'therapists' %}active{% endif %}" href="{{ url_for('therapists_page') }}">Therapists</a>
             <a class="nav-link {% if active_page == 'community' %}active{% endif %}" href="{{ url_for('community_page') }}">Community</a>
+            {% if is_logged_in %}
+              <a class="nav-link {% if active_page == 'patients' %}active{% endif %}" href="{{ url_for('browse_patients') }}">People</a>
+              <a class="nav-link {% if active_page == 'messages' %}active{% endif %}" href="{{ url_for('view_messages') }}">Messages</a>
+            {% endif %}
             <a class="nav-link {% if active_page == 'safe-space' %}active{% endif %}" href="{{ url_for('safe_space_page') }}">Safe Space</a>
             <a class="nav-link {% if active_page == 'wellness' %}active{% endif %}" href="{{ url_for('wellness_page') }}">Wellness</a>
             <a class="nav-link {% if active_page == 'about' %}active{% endif %}" href="{{ url_for('about_page') }}">About</a>
