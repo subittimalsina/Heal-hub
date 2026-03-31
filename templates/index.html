@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="hero-grid home-hero hub-hero">
+    <div class="home-hero-column">
+      <div class="hero-copy surface hero-copy-wellness" data-reveal>
+        <div class="hero-signal-row">
+          <span class="signal-chip signal-chip-primary">Healing Through Stories</span>
+          <span class="signal-chip signal-chip-teal">Safe Community Support</span>
+          <span class="signal-chip signal-chip-amber">Therapist Booking Ready</span>
+        </div>
+        <p class="eyebrow">Warm, modern wellness support</p>
+        <h1>Feel seen, supported, and gently guided back to yourself.</h1>
+        <p class="lead">
+          Heal Hub blends emotionally healing movies and series, therapist booking, community care, women's safety resources,
+          and the original smart care coordination experience into one polished platform.
+        </p>
+        <p class="subcopy">
+          The result is a demo-ready experience that supports both the emotional world of the user and the practical path
+          toward safe, trusted care.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="{{ url_for('movies_page') }}">Explore Healing Stories</a>
+          <a class="btn btn-secondary" href="{{ url_for('dashboard_page') }}">Open Dashboard</a>
+        </div>
+
+        <div class="hero-metrics-ribbon">
+          <div class="hero-ribbon-stat">
+            <span class="meta-label">Story library</span>
+            <strong>{{ platform_snapshot.stories_count }} healing titles</strong>
+          </div>
+          <div class="hero-ribbon-stat">
+            <span class="meta-label">Trusted support</span>
+            <strong>{{ platform_snapshot.therapists_count }} therapists available</strong>
+          </div>
+          <div class="hero-ribbon-stat">
+            <span class="meta-label">Belonging spaces</span>
+            <strong>{{ platform_snapshot.groups_count }} support circles live</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="surface home-healing-map" data-reveal>
+        <div class="section-head compact-section-head">
+          <div>
+            <p class="eyebrow">Why it resonates</p>
+            <h2>A platform that treats healing like a journey, not a single screen.</h2>
+          </div>
+        </div>
+        <div class="journey-grid">
+          <article class="journey-node">
+            <span class="journey-step">01</span>
+            <strong>Stories open emotional connection</strong>
+            <p>Users discover films and series that help them process grief, courage, joy, and growth.</p>
+          </article>
+          <article class="journey-node">
+            <span class="journey-step">02</span>
+            <strong>Support becomes more human</strong>
+            <p>Therapists and community circles offer thoughtful next steps without turning preferences into diagnoses.</p>
+          </article>
+          <article class="journey-node">
+            <span class="journey-step">03</span>
+            <strong>Safety stays visible</strong>
+            <p>Women's wellbeing, boundaries, consent, and digital safety are integrated as part of care.</p>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual hero-visual-premium surface story-control-panel" data-reveal>
+      <div class="visual-mesh"></div>
+      <div class="preview-shell preview-shell-premium story-shell">
+        <div class="preview-header">
+          <div>
+            <span class="meta-label">Heal Hub live preview</span>
+            <strong>Stories, support, and safer care in one flow</strong>
+          </div>
+          <span class="status-chip status-stable">Demo ready</span>
+        </div>
+
+        <div class="story-stage">
+          <article class="story-highlight-card story-highlight-card-primary">
+            <span class="meta-label">Current mood match</span>
+            <strong>{{ featured_movies[0].title }}</strong>
+            <p>{{ featured_movies[0].why_helps }}</p>
+            <div class="tag-cloud">
+              {% for tag in featured_movies[0].mood_tags %}
+                <span>{{ tag }}</span>
+              {% endfor %}
+            </div>
+          </article>
+
+          <div class="story-preview-grid">
+            <article class="story-mini-card">
+              <span class="story-mini-kicker">Book support</span>
+              <strong>{{ featured_therapists[0].name }}</strong>
+              <p>{{ featured_therapists[0].specialty }} • {{ featured_therapists[0].rating }}/5</p>
+            </article>
+            <article class="story-mini-card">
+              <span class="story-mini-kicker">Join a circle</span>
+              <strong>{{ featured_groups[0].name }}</strong>
+              <p>{{ featured_groups[0].members }} members building support together.</p>
+            </article>
+          </div>
+
+          <div class="story-safety-panel">
+            <span class="meta-label">Safe by design</span>
+            <strong>{{ featured_safety_cards[0].title }}</strong>
+            <p>{{ featured_safety_cards[0].content }}</p>
+          </div>
+        </div>
+
+        <div class="preview-queue story-preview-list">
+          {% for movie in featured_movies %}
+            <div class="preview-case">
+              <span class="status-chip status-neutral">{{ movie.type|title }}</span>
+              <div>
+                <strong>{{ movie.title }}</strong>
+                <p>{{ movie.description }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block home-capabilities" data-reveal>
+    <div class="section-head home-section-head">
+      <div>
+        <p class="eyebrow">The new Heal Hub</p>
+        <h2>Four support layers working together</h2>
+      </div>
+      <p class="subcopy">
+        Built for a wellness-focused hackathon demo without throwing away the original hospital operations intelligence.
+      </p>
+    </div>
+
+    <div class="feature-grid home-feature-grid">
+      <article class="feature-card surface feature-card-cinema">
+        <div class="feature-card-top">
+          <span class="feature-kicker">01</span>
+          <span class="signal-chip signal-chip-primary feature-signal">Healing stories</span>
+        </div>
+        <h3>Movies and series with meaning</h3>
+        <p>Users browse seeded titles by motivation, self-growth, women empowerment, friendship, and emotional healing.</p>
+      </article>
+
+      <article class="feature-card surface feature-card-booking">
+        <div class="feature-card-top">
+          <span class="feature-kicker">02</span>
+          <span class="signal-chip signal-chip-teal feature-signal">Human support</span>
+        </div>
+        <h3>Book therapists with confidence</h3>
+        <p>Ratings, reviews, availability, and soft interest insights help the booking flow feel thoughtful and real.</p>
+      </article>
+
+      <article class="feature-card surface feature-card-community">
+        <div class="feature-card-top">
+          <span class="feature-kicker">03</span>
+          <span class="signal-chip signal-chip-amber feature-signal">Belonging</span>
+        </div>
+        <h3>Support circles that feel alive</h3>
+        <p>Warm demo posts, replies, and group channels make the platform feel less lonely and more human.</p>
+      </article>
+
+      <article class="feature-card surface feature-card-safety">
+        <div class="feature-card-top">
+          <span class="feature-kicker">04</span>
+          <span class="signal-chip signal-chip-primary feature-signal">Women's wellbeing</span>
+        </div>
+        <h3>Safety, boundaries, and trust</h3>
+        <p>Respectful guidance around manipulation, consent, digital safety, and asking for help stays visible throughout the experience.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-block story-library-preview" data-reveal>
+    <div class="section-head home-section-head">
+      <div>
+        <p class="eyebrow">Healing through movies</p>
+        <h2>Curated stories that support motivation, courage, and emotional recovery</h2>
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('movies_page') }}">Open story library</a>
+    </div>
+
+    <div class="story-card-grid">
+      {% for movie in featured_movies %}
+        <article class="surface story-card">
+          <div class="story-card-head">
+            <span class="story-card-icon">{{ movie.poster_emoji }}</span>
+            <div>
+              <strong>{{ movie.title }}</strong>
+              <p>{{ movie.type|title }} • {{ movie.genre }}</p>
+            </div>
+          </div>
+          <p class="story-card-copy">{{ movie.description }}</p>
+          <div class="tag-cloud">
+            {% for tag in movie.mood_tags %}
+              <span>{{ tag }}</span>
+            {% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="impact-grid home-impact-grid support-preview-grid">
+    <article class="surface focus-card home-focus-card home-focus-card-primary" data-reveal>
+      <p class="eyebrow">Trusted therapists</p>
+      <h2>Human support that fits the emotional world of the user</h2>
+      <div class="stack-list therapist-preview-list">
+        {% for therapist in featured_therapists %}
+          <div class="mini-profile-card">
+            <div>
+              <strong>{{ therapist.name }}</strong>
+              <p>{{ therapist.specialty }} • {{ therapist.rating }}/5</p>
+            </div>
+            <span class="status-chip status-stable">{{ therapist.reviews }} reviews</span>
+          </div>
+        {% endfor %}
+      </div>
+      <a class="btn btn-primary" href="{{ url_for('therapists_page') }}">View therapists</a>
+    </article>
+
+    <article class="surface focus-card home-focus-card home-focus-card-secondary" data-reveal>
+      <p class="eyebrow">Safe community</p>
+      <h2>Support circles where people can say “me too” and feel less alone</h2>
+      <div class="stack-list therapist-preview-list">
+        {% for group in featured_groups %}
+          <div class="mini-profile-card">
+            <div>
+              <strong>{{ group.name }}</strong>
+              <p>{{ group.description }}</p>
+            </div>
+            <span class="status-chip status-neutral">{{ group.members }} members</span>
+          </div>
+        {% endfor %}
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('community_page') }}">Enter community</a>
+    </article>
+  </section>
+
+  <section class="section-block home-ops-bridge" data-reveal>
+    <div class="section-head home-section-head">
+      <div>
+        <p class="eyebrow">Still included</p>
+        <h2>The original hospital command layer remains intact</h2>
+      </div>
+      <p class="subcopy">
+        Heal Hub still keeps its smart care coordination core for operations demos: triage scoring, hospital capacity, and live routing.
+      </p>
+    </div>
+
+    <div class="feature-grid home-feature-grid">
+      <article class="feature-card surface home-feature-card home-feature-card-primary">
+        <h3>Live AI dashboard</h3>
+        <p>Monitor the hospital network, reprioritize queues, and simulate surge scenarios without losing the new wellness narrative.</p>
+      </article>
+      <article class="feature-card surface home-feature-card home-feature-card-teal">
+        <h3>Medicine and mood tools</h3>
+        <p>Keep the working medicine search, mood check, and AI support pages as part of the wider care journey.</p>
+      </article>
+      <article class="feature-card surface home-feature-card home-feature-card-amber">
+        <h3>One polished story</h3>
+        <p>The demo now feels broader, warmer, and more memorable while preserving the original operational features.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="cta-band home-cta-band surface" data-reveal>
+    <div class="home-cta-copy">
+      <p class="eyebrow">Start the demo</p>
+      <h2>Open the experience that best matches your role.</h2>
+      <p class="subcopy">
+        Patients can explore stories, support circles, and bookings. Doctors can review gentle insight summaries and care context.
+      </p>
+    </div>
+    <div class="button-group home-cta-actions">
+      <a class="btn btn-primary" href="{{ url_for('login') }}">Login to Demo</a>
+      <a class="btn btn-ghost" href="{{ url_for('safe_space_page') }}">Visit Safe Space</a>
+    </div>
+  </section>
+{% endblock %}

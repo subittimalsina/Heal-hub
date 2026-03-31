@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block content %}
+  {% set watched_ids = user_movie_data.get('watched', []) if user_movie_data else [] %}
+  {% set favorite_ids = user_movie_data.get('favorites', []) if user_movie_data else [] %}
+  {% set want_ids = user_movie_data.get('want_to_watch', []) if user_movie_data else [] %}
+
+  <section class="dashboard-overview feature-page-hero" data-reveal>
+    <article class="surface dashboard-panel dashboard-intro-panel">
+      <div class="hero-signal-row">
+        <span class="signal-chip signal-chip-primary">Healing Through Stories</span>
+        <span class="signal-chip signal-chip-teal">Movies + Series</span>
+        <span class="signal-chip signal-chip-amber">Save Your Journey</span>
+      </div>
+      <div class="dashboard-intro-copy">
+        <div>
+          <p class="eyebrow">Growth cinema</p>
+          <h1>Feel better through stories that restore courage, hope, and connection.</h1>
+        </div>
+        <p class="lead">
+          Browse a curated library of movies and series chosen for motivation, healing, self-growth, friendship,
+          inner-child comfort, women empowerment, and mental wellness.
+        </p>
+      </div>
+
+      <div class="hub-stat-band">
+        <div class="hero-meta-card">
+          <span class="meta-label">Titles available</span>
+          <strong>{{ movies|length }}</strong>
+          <small>filtered results right now</small>
+        </div>
+        <div class="hero-meta-card">
+          <span class="meta-label">Current mood match</span>
+          <strong>{{ mood_match.title }}</strong>
+          <small>{{ mood_match.type|title }} • {{ mood_match.year }}</small>
+        </div>
+        <div class="hero-meta-card">
+          <span class="meta-label">Best for</span>
+          <strong>{{ mood_match.mood_tags|join(", ") }}</strong>
+          <small>gentle emotional support</small>
+        </div>
+      </div>
+    </article>
+
+    <aside class="dashboard-overview-side">
+      <article class="surface dashboard-panel dashboard-status-card">
+        <span class="meta-label">Why it helps</span>
+        <strong>{{ mood_match.title }}</strong>
+        <p>{{ mood_match.why_helps }}</p>
+      </article>
+
+      {% if movie_profile %}
+        <article class="surface dashboard-panel dashboard-status-card">
+          <span class="meta-label">Your profile</span>
+          <strong>{{ movie_profile.watched_count }} titles watched</strong>
+          <p>{{ movie_profile.mood_influence_summary }}</p>
+        </article>
+      {% endif %}
+    </aside>
+  </section>
+
+  <section class="dashboard-support-grid">
+    <article class="surface dashboard-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Browse filters</p>
+          <h2>Find stories that match what you need today</h2>
+        </div>
+      </div>
+      <form class="story-search-form" method="get">
+        <label>
+          <span>Search title or feeling</span>
+          <input type="text" name="q" value="{{ search_q }}" placeholder="Search for courage, joy, healing..." />
+        </label>
+        <input type="hidden" name="category" value="{{ selected_category }}" />
+        <button class="btn btn-primary" type="submit">Search</button>
+      </form>
+      <div class="story-filter-row">
+        <a class="story-filter-chip {% if not selected_category %}active{% endif %}" href="{{ url_for('movies_page') }}">All</a>
+        {% for category in categories %}
+          <a
+            class="story-filter-chip {% if selected_category == category %}active{% endif %}"
+            href="{{ url_for('movies_page', category=category, q=search_q) }}"
+          >
+            {{ category }}
+          </a>
+        {% endfor %}
+      </div>
+    </article>
+
+    {% if movie_profile %}
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Personal interest profile</p>
+            <h2>What your saved journey looks like</h2>
+          </div>
+        </div>
+        <p class="subcopy">{{ movie_profile.personal_profile }}</p>
+        <div class="hub-stat-band mini-stat-band">
+          <div class="hero-meta-card">
+            <span class="meta-label">Watched</span>
+            <strong>{{ movie_profile.watched_count }}</strong>
+          </div>
+          <div class="hero-meta-card">
+            <span class="meta-label">Favorites</span>
+            <strong>{{ movie_profile.favorites_count }}</strong>
+          </div>
+          <div class="hero-meta-card">
+            <span class="meta-label">Top categories</span>
+            <strong>{{ movie_profile.top_category_labels|join(", ") or "Still exploring" }}</strong>
+          </div>
+        </div>
+      </article>
+    {% else %}
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Save your journey</p>
+            <h2>Log in to track what you watch</h2>
+          </div>
+        </div>
+        <p class="subcopy">Mark titles as watched, want to watch, or favorite so the dashboard can build a story-based support profile.</p>
+        <a class="btn btn-primary" href="{{ url_for('login', next=url_for('movies_page')) }}">Login to save interests</a>
+      </article>
+    {% endif %}
+  </section>
+
+  {% if is_logged_in %}
+    <section class="surface dashboard-panel story-interest-panel" data-reveal>
+      <div class="dashboard-section-head">
+        <div>
+          <p class="eyebrow">Interests</p>
+          <h2>Tell Heal Hub what kind of stories help you most</h2>
+        </div>
+      </div>
+      <div class="interest-checkbox-grid" data-interest-grid>
+        {% for category in categories %}
+          <label class="interest-checkbox">
+            <input type="checkbox" value="{{ category }}" {% if category in movie_profile.profile.interests %}checked{% endif %} />
+            <span>{{ category }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <div class="button-group">
+        <button class="btn btn-secondary" type="button" data-save-interests>Save interests</button>
+      </div>
+      <p class="subcopy" data-page-feedback>Saved interests shape recommendations and dashboard insights.</p>
+    </section>
+  {% endif %}
+
+  <section class="story-card-grid story-card-grid-full" data-reveal>
+    {% for movie in movies %}
+      <article class="surface story-card story-card-featured" data-movie-card>
+        <div class="story-card-head">
+          <span class="story-card-icon">{{ movie.poster_emoji }}</span>
+          <div>
+            <strong>{{ movie.title }}</strong>
+            <p>{{ movie.type|title }} • {{ movie.genre }} • {{ movie.year }}</p>
+          </div>
+        </div>
+        <p class="story-card-copy">{{ movie.description }}</p>
+        <div class="story-support-box">
+          <span class="meta-label">Why this helps</span>
+          <p>{{ movie.why_helps }}</p>
+        </div>
+        <div class="tag-cloud">
+          {% for tag in movie.mood_tags %}
+            <span>{{ tag }}</span>
+          {% endfor %}
+        </div>
+        <div class="story-card-meta">
+          {% for category in movie.categories %}
+            <span class="story-filter-chip small">{{ category }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="story-action-row">
+          {% if is_logged_in %}
+            <button class="btn btn-secondary" type="button" data-movie-action="watched" data-movie-id="{{ movie.id }}">
+              {% if movie.id in watched_ids %}Watched{% else %}Mark watched{% endif %}
+            </button>
+            <button class="btn btn-ghost" type="button" data-movie-action="want_to_watch" data-movie-id="{{ movie.id }}">
+              {% if movie.id in want_ids %}Saved{% else %}Want to watch{% endif %}
+            </button>
+            <button class="btn btn-ghost" type="button" data-movie-action="favorite" data-movie-id="{{ movie.id }}">
+              {% if movie.id in favorite_ids %}Favorited{% else %}Favorite{% endif %}
+            </button>
+          {% else %}
+            <a class="btn btn-primary" href="{{ url_for('login', next=url_for('movies_page')) }}">Login to save</a>
+          {% endif %}
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+{% endblock %}
