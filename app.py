@@ -2258,46 +2258,81 @@ def movie_action() -> Any:
 
 THERAPISTS_DATA: list[dict[str, Any]] = [
     {
-        "id": "th-001", "name": "Dr. Anita Sharma", "specialty": "Clinical Psychologist",
+        "id": "th-001", "name": "Dr. Aarav Sharma", "specialty": "Clinical Psychologist",
         "rating": 4.9, "reviews": 127, "experience": "12 years",
         "availability": "Mon, Wed, Fri — 10:00 AM to 4:00 PM",
         "bio": "Specializes in anxiety, depression, and trauma recovery. Uses CBT and mindfulness-based approaches.",
-        "avatar_emoji": "👩‍⚕️", "tags": ["anxiety", "depression", "trauma", "CBT"],
+        "avatar_emoji": "👨‍⚕️",
+        "avatar_image": "images/doctor1.png",
+        "languages": ["English", "Hindi", "Nepali"],
+        "is_top_choice": True,
+        "tags": ["anxiety", "depression", "trauma", "CBT"],
     },
     {
-        "id": "th-002", "name": "Dr. Rajesh Patel", "specialty": "Psychiatrist",
+        "id": "th-002", "name": "Dr. Nisha Patel", "specialty": "Psychiatrist",
         "rating": 4.8, "reviews": 98, "experience": "15 years",
         "availability": "Tue, Thu — 9:00 AM to 3:00 PM",
         "bio": "Expert in mood disorders, PTSD, and medication management. Compassionate and evidence-based care.",
-        "avatar_emoji": "👨‍⚕️", "tags": ["mood disorders", "PTSD", "medication"],
+        "avatar_emoji": "👩‍⚕️",
+        "avatar_image": "images/doctor2.png",
+        "languages": ["English", "Hindi"],
+        "is_top_choice": False,
+        "tags": ["mood disorders", "PTSD", "medication"],
     },
     {
-        "id": "th-003", "name": "Dr. Priya Adhikari", "specialty": "Counseling Therapist",
+        "id": "th-003", "name": "Dr. Rajiv Adhikari", "specialty": "Counseling Therapist",
         "rating": 4.7, "reviews": 84, "experience": "8 years",
         "availability": "Mon–Fri — 11:00 AM to 6:00 PM",
         "bio": "Focuses on relationship issues, self-esteem, and life transitions. Warm, empathetic approach.",
-        "avatar_emoji": "👩‍💼", "tags": ["relationships", "self-esteem", "life transitions"],
+        "avatar_emoji": "👨‍⚕️",
+        "avatar_image": "images/doctor3.png",
+        "languages": ["English", "Nepali"],
+        "is_top_choice": False,
+        "tags": ["relationships", "self-esteem", "life transitions"],
     },
     {
-        "id": "th-004", "name": "Dr. Suman Gurung", "specialty": "Women's Wellness Therapist",
-        "rating": 4.9, "reviews": 112, "experience": "10 years",
+        "id": "th-004", "name": "Dr. Suman Gurung", "specialty": "Stress & Burnout Therapist",
+        "rating": 4.8, "reviews": 112, "experience": "10 years",
         "availability": "Mon, Wed, Sat — 9:00 AM to 2:00 PM",
-        "bio": "Dedicated to women's mental health, postpartum support, and empowerment counseling. Safe and supportive space.",
-        "avatar_emoji": "🌸", "tags": ["women's health", "postpartum", "empowerment"],
+        "bio": "Helps people recover from burnout, emotional fatigue, and work stress with practical care plans.",
+        "avatar_emoji": "👨‍⚕️",
+        "avatar_image": "images/doctor4.jpg",
+        "languages": ["English", "Nepali"],
+        "is_top_choice": False,
+        "tags": ["stress", "burnout", "resilience", "creative routines"],
     },
     {
-        "id": "th-005", "name": "Dr. Bikram Thapa", "specialty": "Family Therapist",
-        "rating": 4.6, "reviews": 73, "experience": "11 years",
+        "id": "th-005", "name": "Dr. Anita Thapa", "specialty": "Family Therapist",
+        "rating": 4.7, "reviews": 73, "experience": "11 years",
         "availability": "Tue, Thu, Sat — 10:00 AM to 5:00 PM",
         "bio": "Helps families navigate conflict, communication challenges, and generational patterns with compassion.",
-        "avatar_emoji": "👨‍👩‍👧", "tags": ["family", "communication", "conflict resolution"],
+        "avatar_emoji": "👩‍⚕️",
+        "avatar_image": "images/doctor5.jpg",
+        "languages": ["English", "Nepali"],
+        "is_top_choice": False,
+        "tags": ["family", "communication", "conflict resolution"],
     },
     {
-        "id": "th-006", "name": "Dr. Maya Lama", "specialty": "Art & Expressive Therapist",
-        "rating": 4.8, "reviews": 65, "experience": "7 years",
+        "id": "th-006", "name": "Dr. Maya Lama", "specialty": "Women's Wellness Therapist",
+        "rating": 4.9, "reviews": 65, "experience": "7 years",
         "availability": "Wed, Fri — 1:00 PM to 7:00 PM",
-        "bio": "Uses creative arts, music, and storytelling as therapeutic tools. Ideal for those who find traditional talk therapy challenging.",
-        "avatar_emoji": "🎨", "tags": ["art therapy", "music therapy", "creative healing"],
+        "bio": "Dedicated to women's mental health, postpartum support, and empowerment counseling in a safe environment.",
+        "avatar_emoji": "👩‍⚕️",
+        "avatar_image": "images/doctor6.jpg",
+        "languages": ["English", "Hindi", "Nepali"],
+        "is_top_choice": True,
+        "tags": ["women's health", "postpartum", "empowerment"],
+    },
+    {
+        "id": "th-007", "name": "Dr. Bikram Rai", "specialty": "Trauma Recovery Therapist",
+        "rating": 4.9, "reviews": 94, "experience": "9 years",
+        "availability": "Mon, Thu, Sun — 12:00 PM to 7:00 PM",
+        "bio": "Supports people through trauma-informed recovery with grounding, resilience planning, and gentle progress tracking.",
+        "avatar_emoji": "🩺",
+        "avatar_image": "images/doctor7.jpg",
+        "languages": ["English", "Nepali"],
+        "is_top_choice": True,
+        "tags": ["trauma", "grounding", "resilience"],
     },
 ]
 
@@ -2305,7 +2340,7 @@ BOOKINGS_DATA: list[dict[str, Any]] = [
     {
         "id": "bk-001", "patient_username": "patient", "therapist_id": "th-001",
         "patient_name": "Aasha G.",
-        "therapist_name": "Dr. Anita Sharma", "date": "2026-04-02", "time": "10:30 AM",
+        "therapist_name": "Dr. Aarav Sharma", "date": "2026-04-02", "time": "10:30 AM",
         "status": "confirmed", "notes": "Follow-up session on anxiety management",
     },
     {
@@ -2358,6 +2393,53 @@ DOCTOR_CLIENTS_DATA: list[dict[str, Any]] = [
 
 @app.get("/therapists")
 def therapists_page() -> str:
+    focus_filters = [
+        {"key": "all", "label": "All"},
+        {"key": "anxiety", "label": "Anxiety"},
+        {"key": "relationships", "label": "Relationships"},
+        {"key": "trauma", "label": "Trauma"},
+        {"key": "women", "label": "Women's Care"},
+        {"key": "family", "label": "Family"},
+        {"key": "creative", "label": "Creative"},
+    ]
+    valid_focus = {item["key"] for item in focus_filters}
+    selected_focus = request.args.get("focus", "all").strip().lower()
+    if selected_focus not in valid_focus:
+        selected_focus = "all"
+
+    focus_keywords: dict[str, list[str]] = {
+        "anxiety": ["anxiety", "stress", "cbt", "mindfulness"],
+        "relationships": ["relationship", "self-esteem", "life transitions", "communication"],
+        "trauma": ["trauma", "ptsd", "grief", "resilience"],
+        "women": ["women", "postpartum", "empowerment"],
+        "family": ["family", "communication", "conflict"],
+        "creative": ["creative", "art", "music", "expressive"],
+    }
+
+    def matches_focus(therapist: dict[str, Any]) -> bool:
+        if selected_focus == "all":
+            return True
+        haystack = f"{therapist.get('specialty', '')} {' '.join(therapist.get('tags', []))}".lower()
+        return any(keyword in haystack for keyword in focus_keywords.get(selected_focus, []))
+
+    filtered_therapists = [therapist for therapist in THERAPISTS_DATA if matches_focus(therapist)]
+    sorted_therapists = sorted(
+        filtered_therapists,
+        key=lambda therapist: (
+            not therapist.get("is_top_choice", False),
+            -float(therapist.get("rating", 0)),
+            therapist.get("name", ""),
+        ),
+    )
+    top_doctors = sorted(
+        THERAPISTS_DATA,
+        key=lambda therapist: (
+            not therapist.get("is_top_choice", False),
+            -float(therapist.get("rating", 0)),
+            therapist.get("name", ""),
+        ),
+    )[:7]
+
     user = session.get("user")
     user_bookings = []
     movie_profile = None
@@ -2372,7 +2454,10 @@ def therapists_page() -> str:
         body_class="page-therapists",
         page_id="therapists",
         page_title="Book a Therapist | Heal Hub",
-        therapists=THERAPISTS_DATA,
+        therapists=sorted_therapists,
+        top_doctors=top_doctors,
+        focus_filters=focus_filters,
+        selected_focus=selected_focus,
         bookings=user_bookings,
         movie_profile=movie_profile,
         women_support_therapists=[therapist for therapist in THERAPISTS_DATA if "women" in therapist["specialty"].lower()][:2],

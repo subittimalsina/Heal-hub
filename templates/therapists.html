@@ -1,158 +1,538 @@
 {% extends "base.html" %}
 
+{% block head %}
+  <style>
+    .page-therapists {
+      --doctor-accent: #1f74b7;
+      --doctor-accent-strong: #14588f;
+      --doctor-accent-soft: rgba(31, 116, 183, 0.12);
+      --doctor-teal-soft: rgba(22, 132, 120, 0.14);
+    }
+
+    .doctor-web-page {
+      display: grid;
+      gap: 16px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    .doctor-app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 18px 20px;
+      border-radius: 26px;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(31, 116, 183, 0.2), transparent 42%),
+        radial-gradient(circle at 100% 0%, rgba(22, 132, 120, 0.16), transparent 36%),
+        linear-gradient(140deg, rgba(237, 246, 255, 0.98), rgba(231, 245, 243, 0.96));
+      border: 1px solid rgba(31, 116, 183, 0.2);
+    }
+
+    .doctor-app-brand {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      min-width: 0;
+    }
+
+    .doctor-app-brand h1 {
+      margin: 2px 0 0;
+      font-size: clamp(1.5rem, 2vw, 2rem);
+      line-height: 1.06;
+    }
+
+    .doctor-app-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .doctor-balance-pill,
+    .doctor-support-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 700;
+      border: 1px solid rgba(31, 116, 183, 0.2);
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--doctor-accent-strong);
+    }
+
+    .doctor-booking-summary {
+      display: grid;
+      gap: 10px;
+      padding: 18px 20px;
+    }
+
+    .doctor-booking-summary p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .doctor-booking-summary strong {
+      color: var(--text-strong);
+    }
+
+    .doctor-spotlight-strip {
+      display: grid;
+      gap: 12px;
+      padding: 18px 20px;
+    }
+
+    .doctor-spotlight-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .doctor-spotlight-head h2 {
+      margin: 0;
+      font-size: clamp(1.22rem, 1.8vw, 1.52rem);
+    }
+
+    .doctor-spotlight-head small {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .doctor-avatar-strip {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 2px 2px 6px;
+      scrollbar-width: thin;
+    }
+
+    .doctor-avatar-chip {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      min-width: 86px;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+    }
+
+    .doctor-avatar-photo,
+    .doctor-avatar-fallback {
+      width: 62px;
+      height: 62px;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.94);
+      box-shadow: 0 10px 20px rgba(17, 62, 103, 0.16);
+      object-fit: cover;
+      object-position: center;
+      background: rgba(230, 239, 248, 0.9);
+    }
+
+    .doctor-avatar-fallback {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .doctor-avatar-chip span {
+      max-width: 86px;
+      font-size: 0.78rem;
+      text-align: center;
+      color: var(--muted-strong);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .doctor-online-dot {
+      position: absolute;
+      top: 44px;
+      right: 9px;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #22b76d;
+      border: 2px solid #fff;
+    }
+
+    .doctor-filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+    }
+
+    .doctor-filter-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--muted-strong);
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(17, 62, 103, 0.12);
+      transition: all 180ms ease;
+    }
+
+    .doctor-filter-chip:hover,
+    .doctor-filter-chip.active {
+      color: var(--doctor-accent-strong);
+      background: var(--doctor-accent-soft);
+      border-color: rgba(31, 116, 183, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .doctor-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .doctor-list-card {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(31, 116, 183, 0.08), transparent 26%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(246, 250, 255, 0.93));
+    }
+
+    .doctor-card-top {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .doctor-photo-stack {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+      align-content: start;
+      position: relative;
+    }
+
+    .doctor-photo-main {
+      width: 94px;
+      height: 110px;
+      border-radius: 18px;
+      object-fit: cover;
+      object-position: center;
+      border: 1px solid rgba(17, 62, 103, 0.14);
+      box-shadow: 0 12px 24px rgba(17, 62, 103, 0.16);
+      background: rgba(231, 240, 248, 0.9);
+    }
+
+    .doctor-photo-fallback {
+      width: 94px;
+      height: 110px;
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.46), transparent 30%),
+        linear-gradient(145deg, rgba(31, 116, 183, 0.2), rgba(22, 132, 120, 0.2));
+      border: 1px solid rgba(17, 62, 103, 0.14);
+    }
+
+    .doctor-top-choice {
+      position: absolute;
+      top: -8px;
+      left: 0;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(193, 138, 53, 0.18);
+      border: 1px solid rgba(193, 138, 53, 0.24);
+      color: #89590f;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .doctor-verified {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--doctor-teal-soft);
+      border: 1px solid rgba(22, 132, 120, 0.18);
+      color: var(--teal);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .doctor-name-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .doctor-name-row h3 {
+      margin: 0;
+      font-size: clamp(1.14rem, 1.9vw, 1.42rem);
+      line-height: 1.12;
+    }
+
+    .doctor-rating-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(193, 138, 53, 0.22);
+      background: rgba(193, 138, 53, 0.14);
+      color: #89590f;
+      font-size: 0.86rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .doctor-specialty {
+      margin-top: 6px;
+      color: var(--text-strong);
+      font-weight: 600;
+    }
+
+    .doctor-meta-line {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .doctor-bio {
+      margin-top: 8px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .doctor-tag-cloud {
+      margin-top: 10px;
+    }
+
+    .doctor-tag-cloud span {
+      min-height: 28px;
+      padding: 5px 10px;
+      font-size: 0.74rem;
+    }
+
+    .doctor-card-foot {
+      display: grid;
+      gap: 10px;
+    }
+
+    .doctor-availability {
+      margin: 0;
+      color: var(--muted-strong);
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .doctor-action-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .doctor-book-btn,
+    .doctor-login-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      border-radius: 999px;
+      border: 1px solid rgba(20, 88, 143, 0.22);
+      background: linear-gradient(145deg, rgba(31, 116, 183, 0.96), rgba(20, 88, 143, 0.98));
+      color: #fff;
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition:
+        transform 180ms ease,
+        box-shadow 180ms ease,
+        background 180ms ease;
+    }
+
+    .doctor-book-btn:hover,
+    .doctor-login-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 28px rgba(20, 88, 143, 0.22);
+      background: linear-gradient(145deg, rgba(23, 99, 162, 0.98), rgba(18, 80, 132, 0.98));
+    }
+
+    @media (max-width: 900px) {
+      .doctor-app-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .doctor-app-actions {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .doctor-card-top {
+        grid-template-columns: 1fr;
+      }
+
+      .doctor-photo-stack {
+        justify-items: flex-start;
+      }
+    }
+  </style>
+{% endblock %}
+
 {% block content %}
-  <section class="dashboard-overview feature-page-hero" data-reveal>
-    <article class="surface dashboard-panel dashboard-intro-panel">
-      <div class="hero-signal-row">
-        <span class="signal-chip signal-chip-primary">Doctor and Therapist Booking</span>
-        <span class="signal-chip signal-chip-teal">Soft Insight Friendly</span>
-        <span class="signal-chip signal-chip-amber">Simple Demo Flow</span>
-      </div>
-      <div class="dashboard-intro-copy">
+  <section class="doctor-web-page" data-reveal>
+    <header class="surface doctor-app-header">
+      <div class="doctor-app-brand">
         <div>
-          <p class="eyebrow">Trusted support</p>
-          <h1>Book a therapist who matches the kind of support you need.</h1>
-        </div>
-        <p class="lead">
-          Browse experienced therapists and doctors by specialty, reviews, and availability, then book a lightweight demo appointment in seconds.
-        </p>
-      </div>
-
-      <div class="hub-stat-band">
-        <div class="hero-meta-card">
-          <span class="meta-label">Available profiles</span>
-          <strong>{{ therapists|length }}</strong>
-          <small>seeded care professionals</small>
-        </div>
-        <div class="hero-meta-card">
-          <span class="meta-label">Confirmed bookings</span>
-          <strong>{{ bookings|length }}</strong>
-          <small>for the current user</small>
-        </div>
-        <div class="hero-meta-card">
-          <span class="meta-label">Insight framing</span>
-          <strong>Soft, respectful</strong>
-          <small>used for understanding, not diagnosis</small>
+          <p class="eyebrow">Doctor Discovery</p>
+          <h1>Top Doctors</h1>
         </div>
       </div>
-    </article>
+      <div class="doctor-app-actions">
+        <span class="doctor-balance-pill">Appointments open</span>
+        <a class="doctor-support-pill" href="{{ url_for('safe_space_page') }}">Need support</a>
+      </div>
+    </header>
 
-    <aside class="dashboard-overview-side">
-      <article class="surface dashboard-panel dashboard-status-card">
-        <span class="meta-label">Women-focused support</span>
-        <strong>{{ women_support_therapists[0].name }}</strong>
-        <p>{{ women_support_therapists[0].bio }}</p>
-      </article>
+    <section class="surface doctor-booking-summary">
+      <div>
+        <p class="eyebrow">Quick booking</p>
+        {% if bookings %}
+          {% set latest_booking = bookings[-1] %}
+          <strong>Last booked: {{ latest_booking.therapist_name }} • {{ latest_booking.date }} • {{ latest_booking.time }}</strong>
+        {% elif is_logged_in %}
+          <strong>No appointments booked yet. Pick any doctor card below to get started.</strong>
+        {% else %}
+          <strong>Browse doctors first. Login only when you are ready to book an appointment.</strong>
+        {% endif %}
+      </div>
+      <p data-page-feedback>Choose a doctor and tap Book appointment.</p>
+    </section>
 
-      {% if movie_profile %}
-        <article class="surface dashboard-panel dashboard-status-card">
-          <span class="meta-label">Your story profile</span>
-          <strong>{{ movie_profile.top_category_labels|join(", ") or "Still exploring" }}</strong>
-          <p>Therapists can use these as gentle conversation starters if you choose to share them.</p>
+    <section class="surface doctor-spotlight-strip">
+      <div class="doctor-spotlight-head">
+        <h2>Available Specialists</h2>
+        <small>{{ therapists|length }} in this category</small>
+      </div>
+      <div class="doctor-avatar-strip">
+        {% for doctor in top_doctors %}
+          <a class="doctor-avatar-chip" href="#{{ doctor.id }}">
+            {% if doctor.avatar_image %}
+              <img
+                class="doctor-avatar-photo"
+                src="{{ url_for('static', filename=doctor.avatar_image) }}"
+                alt="{{ doctor.name }} photo"
+                loading="lazy"
+              />
+            {% else %}
+              <span class="doctor-avatar-fallback">{{ doctor.avatar_emoji }}</span>
+            {% endif %}
+            <span>{{ doctor.name|replace("Dr. ", "") }}</span>
+            <i class="doctor-online-dot" aria-hidden="true"></i>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+
+    <nav class="doctor-filter-row" aria-label="Doctor filters">
+      {% for focus in focus_filters %}
+        <a
+          class="doctor-filter-chip {% if selected_focus == focus.key %}active{% endif %}"
+          href="{{ url_for('therapists_page', focus=focus.key) }}"
+        >
+          {{ focus.label }}
+        </a>
+      {% endfor %}
+    </nav>
+
+    <section class="doctor-list" id="therapist-list">
+      {% if therapists %}
+        {% for therapist in therapists %}
+          <article class="surface doctor-list-card" id="{{ therapist.id }}" data-therapist-card>
+            <div class="doctor-card-top">
+              <div class="doctor-photo-stack">
+                {% if therapist.is_top_choice %}
+                  <span class="doctor-top-choice">Top choice</span>
+                {% endif %}
+                {% if therapist.avatar_image %}
+                  <img
+                    class="doctor-photo-main"
+                    src="{{ url_for('static', filename=therapist.avatar_image) }}"
+                    alt="{{ therapist.name }} profile photo"
+                    loading="lazy"
+                  />
+                {% else %}
+                  <span class="doctor-photo-fallback">{{ therapist.avatar_emoji }}</span>
+                {% endif %}
+                <span class="doctor-verified">Verified</span>
+              </div>
+
+              <div class="doctor-card-copy">
+                <div class="doctor-name-row">
+                  <h3>{{ therapist.name }}</h3>
+                  <span class="doctor-rating-pill">★ {{ "%.1f"|format(therapist.rating) }}</span>
+                </div>
+                <p class="doctor-specialty">{{ therapist.specialty }}</p>
+                <p class="doctor-meta-line">{{ therapist.languages|join(", ") }} • EXP: {{ therapist.experience }} • {{ therapist.reviews }} reviews</p>
+                <p class="doctor-bio">{{ therapist.bio }}</p>
+                <div class="tag-cloud doctor-tag-cloud">
+                  {% for tag in therapist.tags %}
+                    <span>{{ tag }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+
+            <div class="doctor-card-foot">
+              <p class="doctor-availability">Availability: {{ therapist.availability }}</p>
+              {% if is_logged_in %}
+                <input type="hidden" data-booking-date value="2026-04-05" />
+                <input type="hidden" data-booking-time value="10:00 AM" />
+                <input type="hidden" data-booking-notes value="Appointment requested from doctor listing view." />
+                <div class="doctor-action-row">
+                  <button class="doctor-book-btn" type="button" data-book-therapist data-therapist-id="{{ therapist.id }}">Book appointment</button>
+                </div>
+              {% else %}
+                <a class="doctor-login-btn" href="{{ url_for('login', next=url_for('therapists_page', focus=selected_focus)) }}">
+                  Login to book appointment
+                </a>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <article class="surface empty-state">
+          No doctors matched this filter right now. Try another category.
         </article>
       {% endif %}
-    </aside>
-  </section>
-
-  <section class="dashboard-support-grid">
-    <article class="surface dashboard-panel" data-reveal>
-      <div class="dashboard-section-head">
-        <div>
-          <p class="eyebrow">Why this feels thoughtful</p>
-          <h2>Interest-based therapeutic understanding</h2>
-        </div>
-      </div>
-      <p class="subcopy">
-        Heal Hub can show supportive patterns from story preferences, watched categories, and emotional themes so therapists understand
-        what inspires or comforts the user. These are soft insights only and should be used with consent and care.
-      </p>
-      {% if movie_profile %}
-        <div class="tag-cloud">
-          {% for label in movie_profile.top_category_labels %}
-            <span>{{ label }}</span>
-          {% endfor %}
-          {% for theme in movie_profile.mood_themes[:3] %}
-            <span>{{ theme }}</span>
-          {% endfor %}
-        </div>
-      {% endif %}
-      <p class="subcopy" data-page-feedback>Booking stays simple for the demo, while keeping the framing respectful and supportive.</p>
-    </article>
-
-    <article class="surface dashboard-panel" data-reveal>
-      <div class="dashboard-section-head">
-        <div>
-          <p class="eyebrow">Your bookings</p>
-          <h2>Upcoming sessions</h2>
-        </div>
-      </div>
-      {% if bookings %}
-        <div class="timeline-list">
-          {% for booking in bookings %}
-            <article class="timeline-card">
-              <div class="timeline-card-head">
-                <strong>{{ booking.therapist_name }}</strong>
-                <span class="status-chip status-stable">{{ booking.status|title }}</span>
-              </div>
-              <p>{{ booking.date }} • {{ booking.time }}</p>
-              <small>{{ booking.notes }}</small>
-            </article>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="notice-banner">No bookings yet. You can request one directly from any therapist card below.</div>
-      {% endif %}
-    </article>
-  </section>
-
-  <section class="therapist-card-grid" data-reveal>
-    {% for therapist in therapists %}
-      <article class="surface therapist-card" data-therapist-card>
-        <div class="therapist-card-head">
-          <div class="therapist-avatar">{{ therapist.avatar_emoji }}</div>
-          <div>
-            <strong>{{ therapist.name }}</strong>
-            <p>{{ therapist.specialty }}</p>
-          </div>
-        </div>
-
-        <div class="therapist-stat-row">
-          <span class="status-chip status-stable">{{ therapist.rating }}/5</span>
-          <span class="status-chip status-neutral">{{ therapist.reviews }} reviews</span>
-          <span class="status-chip status-warning">{{ therapist.experience }}</span>
-        </div>
-
-        <p class="therapist-card-copy">{{ therapist.bio }}</p>
-        <p class="subcopy"><strong>Availability:</strong> {{ therapist.availability }}</p>
-
-        <div class="tag-cloud">
-          {% for tag in therapist.tags %}
-            <span>{{ tag }}</span>
-          {% endfor %}
-        </div>
-
-        {% if is_logged_in %}
-          <div class="booking-form-grid">
-            <label>
-              <span>Date</span>
-              <input type="date" value="2026-04-05" data-booking-date />
-            </label>
-            <label>
-              <span>Time</span>
-              <input type="text" value="10:00 AM" data-booking-time />
-            </label>
-            <label class="booking-notes-field">
-              <span>Notes for therapist</span>
-              <textarea rows="3" placeholder="What kind of support are you hoping for?" data-booking-notes></textarea>
-            </label>
-          </div>
-          <div class="button-group">
-            <button class="btn btn-primary" type="button" data-book-therapist data-therapist-id="{{ therapist.id }}">Book appointment</button>
-          </div>
-        {% else %}
-          <a class="btn btn-primary" href="{{ url_for('login', next=url_for('therapists_page')) }}">Login to book</a>
-        {% endif %}
-      </article>
-    {% endfor %}
+    </section>
   </section>
 {% endblock %}
