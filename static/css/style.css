@@ -3617,7 +3617,7 @@ code {
 }
 
 .home-first-hero {
-  align-items: start;
+  align-items: stretch;
 }
 
 .home-first-copy h1 {
@@ -3634,15 +3634,24 @@ code {
 
 .home-first-steps {
   display: grid;
+  grid-template-rows: auto 1fr;
   gap: 16px;
-  align-content: start;
+  align-content: stretch;
+  height: 100%;
   background:
     radial-gradient(circle at 100% 0%, rgba(22, 132, 120, 0.12), transparent 28%),
     rgba(255, 255, 255, 0.92);
 }
 
 .home-first-steps .timeline-list {
-  gap: 12px;
+  display: grid;
+  gap: 8px;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.home-first-steps .timeline-card {
+  height: 100%;
+  align-content: start;
 }
 
 .home-first-quick-grid {
