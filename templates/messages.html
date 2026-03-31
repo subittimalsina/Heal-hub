@@ -1,378 +1,852 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="messages-container">
-  <div class="messages-sidebar">
-    <div class="messages-header">
-      <h2 style="margin: 0; font-size: 1.5rem; font-weight: 700;">Chats</h2>
-      <div class="messages-header-icons">
-        <button class="icon-btn" title="More options">⋯</button>
-        <button class="icon-btn" title="Compose">✎</button>
+  <div class="chat-shell">
+    <aside class="surface chat-sidebar">
+      <header class="chat-sidebar-head">
+        <h2>Chats</h2>
+        <button class="chat-icon-btn" type="button" title="New chat">+</button>
+      </header>
+
+      <div class="chat-search-wrap">
+        <input type="text" id="chatSearch" class="chat-search" placeholder="Search Chat" />
       </div>
-    </div>
 
-    <div class="messages-search">
-      <input type="text" placeholder="Search Messenger" class="search-input" id="chatSearch">
-    </div>
+      <div class="chat-tabs" role="tablist" aria-label="Chat filters">
+        <button type="button" class="chat-tab active" data-tab="all">All</button>
+        <button type="button" class="chat-tab" data-tab="unread">Unread</button>
+        <button type="button" class="chat-tab" data-tab="recent">Recent</button>
+      </div>
 
-    <div class="messages-tabs">
-      <button class="tab-btn active" data-tab="all">All</button>
-      <button class="tab-btn" data-tab="unread">Unread</button>
-      <button class="tab-btn" data-tab="groups">Groups</button>
-      <button class="tab-btn" data-tab="communities">Communities</button>
-    </div>
+      <div class="chat-thread-list" id="chatThreadList">
+        {% if conversation_items %}
+          {% for convo in conversation_items %}
+            {% set partner = convo.partner_profile or {} %}
+            {% set latest = convo.latest_message %}
+            <a
+              href="{{ url_for('view_messages', user=convo.partner_username) }}"
+              class="chat-thread {% if selected_partner == convo.partner_username %}active{% endif %}"
+              data-username="{{ convo.partner_username }}"
+              data-unread="{{ convo.unread_count }}"
+              data-rank="{{ loop.index0 }}"
+            >
+              <span class="chat-avatar">{{ partner.avatar or "U" }}</span>
+              <div class="chat-thread-copy">
+                <div class="chat-thread-row">
+                  <strong>{{ partner.display_name or convo.partner_username }}</strong>
+                  <time class="chat-thread-time">{{ latest.timestamp if latest else "now" }}</time>
+                </div>
+                <div class="chat-thread-row">
+                  <p class="chat-thread-preview">
+                    {% if latest %}
+                      {% if latest.from_user == current_user.username %}You:{% else %}{{ latest.from_display }}:{% endif %}
+                      {{ latest.content }}
+                    {% else %}
+                      No messages yet
+                    {% endif %}
+                  </p>
+                  {% if convo.unread_count > 0 %}
+                    <span class="chat-unread">{{ convo.unread_count }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </a>
+          {% endfor %}
+        {% else %}
+          <div class="chat-empty-list">
+            <p>No conversations yet.</p>
+            <a class="btn btn-primary" href="{{ url_for('browse_patients') }}">Start a conversation</a>
+          </div>
+        {% endif %}
+      </div>
+    </aside>
 
-    <div class="conversations-list">
-      {% if conversations %}
-        {% for partner_username, convo in conversations.items() %}
-          <a href="{{ url_for('view_patient_profile', username=partner_username) }}" class="conversation-item" data-username="{{ partner_username }}">
-            <div class="conversation-avatar">
-              <span class="avatar-emoji">{{ convo.partner_profile.avatar }}</span>
-              {% if convo.partner_profile.online %}
-                <div class="online-indicator"></div>
+    <section class="surface chat-main">
+      {% if selected_conversation %}
+        {% set partner = selected_conversation.partner_profile or {} %}
+        <header class="chat-main-head">
+          <a class="chat-back-btn" href="{{ url_for('view_messages') }}">Back</a>
+          <div class="chat-main-user">
+            <span class="chat-avatar large">{{ partner.avatar or "U" }}</span>
+            <div>
+              <strong>{{ partner.display_name or selected_conversation.partner_username }}</strong>
+              <p>{{ partner.location or "Community member" }}{% if partner.connection_status %} • {{ partner.connection_status }}{% endif %}</p>
+            </div>
+          </div>
+          <div class="chat-main-actions">
+            <button type="button" class="chat-icon-btn" title="Audio call">Call</button>
+            <button type="button" class="chat-icon-btn" title="Video call">Video</button>
+          </div>
+        </header>
+
+        <div class="chat-stream" id="chatStream">
+          {% set stream_ns = namespace(last_date="") %}
+          {% for message in selected_conversation.messages %}
+            {% set msg_date = (message.timestamp or "")[:10] %}
+            {% if msg_date and msg_date != stream_ns.last_date %}
+              <div class="chat-day-sep"><span>{{ msg_date }}</span></div>
+              {% set stream_ns.last_date = msg_date %}
+            {% endif %}
+            {% set mine = message.from_user == current_user.username %}
+            <article class="chat-msg {% if mine %}mine{% else %}theirs{% endif %}">
+              {% if not mine %}
+                <span class="chat-sender">{{ message.from_display }}</span>
               {% endif %}
-            </div>
+              <div class="chat-bubble">{{ message.content }}</div>
+              <time class="chat-meta">{{ message.timestamp }}</time>
+            </article>
+          {% endfor %}
+        </div>
 
-            <div class="conversation-content">
-              <div class="conversation-name-row">
-                <span class="conversation-name">{{ convo.partner_profile.display_name }}</span>
-                <span class="conversation-time">
-                  {% if convo.messages %}
-                    {{ convo.messages[0].timestamp }}
-                  {% else %}
-                    now
-                  {% endif %}
-                </span>
-              </div>
-              <div class="conversation-preview-row">
-                <p class="conversation-preview">
-                  {% if convo.messages %}
-                    {{ convo.messages[0].from_display }}: {{ convo.messages[0].content[:50] }}{% if convo.messages[0].content|length > 50 %}...{% endif %}
-                  {% else %}
-                    No messages yet
-                  {% endif %}
-                </p>
-                {% if convo.unread_count > 0 %}
-                  <span class="unread-badge">{{ convo.unread_count }}</span>
-                {% endif %}
-              </div>
-            </div>
-          </a>
-        {% endfor %}
+        <form class="chat-compose" id="chatComposer" data-to="{{ selected_conversation.partner_username }}">
+          <input
+            id="chatInput"
+            type="text"
+            name="content"
+            maxlength="600"
+            placeholder="Write a message..."
+            autocomplete="off"
+            required
+          />
+          <button class="btn btn-primary" id="chatSendBtn" type="submit">Send</button>
+        </form>
       {% else %}
-        <div class="empty-state">
-          <p style="text-align: center; color: #999; padding: 2rem;">
-            💬 No conversations yet
-          </p>
-          <a href="{{ url_for('browse_patients') }}" class="btn btn-primary" style="margin: 1rem auto; display: block; width: fit-content;">
-            Start a conversation
-          </a>
+        <div class="chat-empty-main">
+          <h3>Select a chat</h3>
+          <p>Pick a conversation from the left to start messaging.</p>
         </div>
       {% endif %}
-    </div>
+    </section>
 
-    {% if conversations %}
-      <div class="conversations-footer">
-        <a href="#" class="see-all-link">See all in Messenger</a>
-      </div>
-    {% endif %}
+    <aside class="surface chat-info">
+      {% if selected_conversation %}
+        {% set partner = selected_conversation.partner_profile or {} %}
+        <div class="chat-info-top">
+          <span class="chat-avatar xlarge">{{ partner.avatar or "U" }}</span>
+          <strong>{{ partner.display_name or selected_conversation.partner_username }}</strong>
+          <p>{{ partner.bio or "Connected support partner in your healing network." }}</p>
+          <small class="chat-info-meta">
+            {{ partner.location or "Community member" }}{% if partner.member_since %} • Member since {{ partner.member_since }}{% endif %}
+          </small>
+        </div>
+
+        <a class="btn btn-secondary chat-profile-link" href="{{ url_for('view_patient_profile', username=selected_conversation.partner_username) }}">View profile</a>
+
+        <div class="chat-info-actions">
+          <button type="button" class="chat-info-btn">Mute</button>
+          <button type="button" class="chat-info-btn">Search</button>
+        </div>
+
+        <div class="chat-info-block">
+          <h4>Shared circles</h4>
+          <div class="chat-pill-wrap">
+            {% if shared_groups %}
+              {% for group_name in shared_groups %}
+                <span class="chat-pill">{{ group_name }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="chat-pill chat-pill-muted">No shared circles yet</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="chat-info-block">
+          <h4>Shared interests</h4>
+          <div class="chat-pill-wrap">
+            {% if shared_interests %}
+              {% for interest in shared_interests %}
+                <span class="chat-pill">{{ interest|title }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="chat-pill chat-pill-muted">Still discovering common interests</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="chat-info-list">
+          <button type="button" class="chat-info-row"><span>Chat info</span><span>&gt;</span></button>
+          <button type="button" class="chat-info-row"><span>Customize chat</span><span>&gt;</span></button>
+          <button type="button" class="chat-info-row"><span>Shared media</span><span>&gt;</span></button>
+          <button type="button" class="chat-info-row"><span>Privacy & support</span><span>&gt;</span></button>
+        </div>
+      {% else %}
+        <div class="chat-empty-main">
+          <h3>Chat details</h3>
+          <p>Conversation details will appear here when you select a chat.</p>
+        </div>
+      {% endif %}
+    </aside>
   </div>
 
-  <div class="messages-main">
-    <div class="empty-main-state">
-      <p>Select a conversation to start messaging</p>
-    </div>
-  </div>
-</div>
+  <style>
+    .chat-shell {
+      display: grid;
+      grid-template-columns: minmax(280px, 330px) minmax(0, 1fr) minmax(260px, 310px);
+      gap: 14px;
+      min-height: clamp(560px, calc(100vh - 180px), 760px);
+      align-items: stretch;
+    }
 
-<style>
-  .messages-container {
-    display: flex;
-    height: calc(100vh - 100px);
-    gap: 0;
-    background: #fff;
-    margin: -1rem;
-  }
+    .chat-sidebar,
+    .chat-main,
+    .chat-info {
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid rgba(17, 62, 103, 0.12);
+      background: rgba(255, 255, 255, 0.94);
+    }
 
-  .messages-sidebar {
-    width: 360px;
-    border-right: 1px solid #e5e5e5;
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-    overflow: hidden;
-  }
-
-  .messages-header {
-    padding: 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #e5e5e5;
-  }
-
-  .messages-header-icons {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .icon-btn {
-    background: none;
-    border: none;
-    font-size: 1.25rem;
-    cursor: pointer;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-  }
-
-  .icon-btn:hover {
-    background: #f0f0f0;
-  }
-
-  .messages-search {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #e5e5e5;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: 0.5rem 1rem;
-    border: 1px solid #e5e5e5;
-    border-radius: 20px;
-    background: #f0f0f0;
-    font-size: 0.95rem;
-    outline: none;
-    transition: background 0.2s;
-  }
-
-  .search-input:focus {
-    background: #e8e8e8;
-  }
-
-  .messages-tabs {
-    display: flex;
-    gap: 0;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #e5e5e5;
-    overflow-x: auto;
-  }
-
-  .tab-btn {
-    background: none;
-    border: none;
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: #999;
-    white-space: nowrap;
-    transition: color 0.2s;
-  }
-
-  .tab-btn.active {
-    color: #0a7cff;
-    font-weight: 600;
-  }
-
-  .tab-btn:hover {
-    color: #555;
-  }
-
-  .conversations-list {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  .conversation-item {
-    display: flex;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #f0f0f0;
-    cursor: pointer;
-    transition: background 0.2s;
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .conversation-item:hover {
-    background: #f5f5f5;
-  }
-
-  .conversation-avatar {
-    position: relative;
-    flex-shrink: 0;
-  }
-
-  .avatar-emoji {
-    font-size: 2.5rem;
-    width: 56px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #e9ecef;
-    border-radius: 50%;
-  }
-
-  .online-indicator {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 14px;
-    height: 14px;
-    background: #0a7cff;
-    border: 2px solid white;
-    border-radius: 50%;
-  }
-
-  .conversation-content {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  .conversation-name-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.25rem;
-  }
-
-  .conversation-name {
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-
-  .conversation-time {
-    font-size: 0.8rem;
-    color: #999;
-    white-space: nowrap;
-    margin-left: 0.5rem;
-  }
-
-  .conversation-preview-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .conversation-preview {
-    margin: 0;
-    font-size: 0.85rem;
-    color: #999;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex: 1;
-  }
-
-  .unread-badge {
-    background: #c35d68;
-    color: white;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    margin-left: 0.5rem;
-    flex-shrink: 0;
-  }
-
-  .conversations-footer {
-    padding: 1rem;
-    text-align: center;
-    border-top: 1px solid #e5e5e5;
-  }
-
-  .see-all-link {
-    color: #0a7cff;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: opacity 0.2s;
-  }
-
-  .see-all-link:hover {
-    opacity: 0.8;
-  }
-
-  .empty-state {
-    padding: 2rem 1rem;
-    text-align: center;
-  }
-
-  .messages-main {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
-  }
-
-  .empty-main-state {
-    text-align: center;
-    color: #999;
-  }
-
-  .conversations-list::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .conversations-list::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .conversations-list::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 3px;
-  }
-
-  .conversations-list::-webkit-scrollbar-thumb:hover {
-    background: #999;
-  }
-
-  @media (max-width: 768px) {
-    .messages-container {
+    .chat-sidebar {
+      display: flex;
       flex-direction: column;
-      height: auto;
     }
 
-    .messages-sidebar {
+    .chat-sidebar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid rgba(17, 62, 103, 0.08);
+    }
+
+    .chat-sidebar-head h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .chat-icon-btn {
+      border: 1px solid rgba(17, 62, 103, 0.16);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--primary-strong);
+      border-radius: 999px;
+      min-width: 36px;
+      height: 36px;
+      padding: 0 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .chat-search-wrap {
+      padding: 10px 18px 12px;
+      border-bottom: 1px solid rgba(17, 62, 103, 0.08);
+    }
+
+    .chat-search {
       width: 100%;
-      max-height: 70vh;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid rgba(17, 62, 103, 0.14);
+      background: rgba(241, 246, 252, 0.95);
+      padding: 0 14px;
+      font-size: 0.92rem;
+      outline: none;
     }
 
-    .messages-main {
+    .chat-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 10px 18px;
+      border-bottom: 1px solid rgba(17, 62, 103, 0.08);
+    }
+
+    .chat-tab {
+      border: 0;
+      background: rgba(17, 62, 103, 0.08);
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .chat-tab.active {
+      background: rgba(31, 116, 183, 0.16);
+      color: var(--primary-strong);
+    }
+
+    .chat-thread-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .chat-thread {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      min-height: 68px;
+      border-radius: 14px;
+      padding: 10px;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid transparent;
+      background: transparent;
+    }
+
+    .chat-thread:hover {
+      background: rgba(17, 62, 103, 0.05);
+    }
+
+    .chat-thread.active {
+      border-color: rgba(31, 116, 183, 0.2);
+      background: rgba(31, 116, 183, 0.11);
+    }
+
+    .chat-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid rgba(17, 62, 103, 0.15);
+      background: rgba(255, 255, 255, 0.9);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .chat-avatar.large {
+      width: 48px;
+      height: 48px;
+      font-size: 1.7rem;
+    }
+
+    .chat-avatar.xlarge {
+      width: 72px;
+      height: 72px;
+      font-size: 2rem;
+    }
+
+    .chat-thread-copy {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .chat-thread-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .chat-thread-row strong {
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-thread-time {
+      font-size: 0.72rem;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .chat-thread-preview {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .chat-unread {
+      min-width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: #c35d68;
+      color: #fff;
+      font-size: 0.72rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      padding: 0 6px;
+      flex-shrink: 0;
+    }
+
+    .chat-empty-list {
+      display: grid;
+      gap: 12px;
+      justify-items: center;
+      align-content: center;
+      min-height: 220px;
+      text-align: center;
+      padding: 16px;
+      color: var(--muted);
+    }
+
+    .chat-main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background:
+        radial-gradient(circle at 80% 0%, rgba(31, 116, 183, 0.08), transparent 32%),
+        rgba(255, 255, 255, 0.95);
+    }
+
+    .chat-main-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(17, 62, 103, 0.1);
+    }
+
+    .chat-back-btn {
       display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(17, 62, 103, 0.14);
+      background: rgba(241, 246, 252, 0.86);
+      color: var(--primary-strong);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 700;
+      flex-shrink: 0;
     }
-  }
-</style>
 
-<script>
-  document.getElementById('chatSearch').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase();
-    const conversations = document.querySelectorAll('.conversation-item');
-    conversations.forEach(conv => {
-      const name = conv.querySelector('.conversation-name').textContent.toLowerCase();
-      conv.style.display = name.includes(query) ? '' : 'none';
-    });
-  });
+    .chat-main-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
 
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-  });
-</script>
+    .chat-main-user strong {
+      display: block;
+      font-size: 1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-main-user p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-main-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .chat-stream {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-start;
+      justify-content: flex-start;
+      background:
+        radial-gradient(circle at 12% 6%, rgba(31, 116, 183, 0.08), transparent 26%),
+        radial-gradient(circle at 88% 100%, rgba(22, 132, 120, 0.08), transparent 24%),
+        rgba(248, 252, 255, 0.72);
+    }
+
+    .chat-day-sep {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      align-self: center;
+      margin: 4px 0;
+    }
+
+    .chat-day-sep span {
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(17, 62, 103, 0.12);
+      background: rgba(255, 255, 255, 0.88);
+    }
+
+    .chat-msg {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      max-width: min(78%, 560px);
+    }
+
+    .chat-msg.mine {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+
+    .chat-sender {
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 0 4px;
+    }
+
+    .chat-bubble {
+      border-radius: 18px;
+      padding: 10px 12px;
+      line-height: 1.55;
+      border: 1px solid rgba(17, 62, 103, 0.1);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .chat-msg.mine .chat-bubble {
+      background: linear-gradient(140deg, rgba(31, 116, 183, 0.16), rgba(22, 132, 120, 0.14));
+      border-color: rgba(31, 116, 183, 0.2);
+      color: var(--text-strong);
+    }
+
+    .chat-meta {
+      font-size: 0.7rem;
+      color: var(--muted);
+      padding: 0 4px;
+    }
+
+    .chat-compose {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 12px 14px;
+      border-top: 1px solid rgba(17, 62, 103, 0.1);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .chat-compose input {
+      width: 100%;
+      min-height: 42px;
+      border-radius: 999px;
+      border: 1px solid rgba(17, 62, 103, 0.14);
+      background: rgba(241, 246, 252, 0.95);
+      padding: 0 14px;
+      outline: none;
+      font-size: 0.92rem;
+    }
+
+    .chat-compose .btn {
+      min-height: 42px;
+      border-radius: 999px;
+      padding: 9px 16px;
+    }
+
+    .chat-thread-list::-webkit-scrollbar,
+    .chat-stream::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .chat-thread-list::-webkit-scrollbar-thumb,
+    .chat-stream::-webkit-scrollbar-thumb {
+      background: rgba(17, 62, 103, 0.22);
+      border-radius: 999px;
+    }
+
+    .chat-thread-list::-webkit-scrollbar-track,
+    .chat-stream::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-empty-main {
+      margin: auto;
+      text-align: center;
+      color: var(--muted);
+      display: grid;
+      gap: 6px;
+      padding: 24px;
+    }
+
+    .chat-empty-main h3 {
+      margin: 0;
+    }
+
+    .chat-empty-main p {
+      margin: 0;
+    }
+
+    .chat-info {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .chat-info-top {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+      text-align: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(17, 62, 103, 0.08);
+    }
+
+    .chat-info-top strong {
+      font-size: 1.25rem;
+    }
+
+    .chat-info-top p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+
+    .chat-info-meta {
+      color: var(--muted);
+      font-size: 0.76rem;
+      line-height: 1.45;
+    }
+
+    .chat-info-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .chat-profile-link {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .chat-info-btn {
+      min-height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(17, 62, 103, 0.12);
+      background: rgba(241, 246, 252, 0.86);
+      color: var(--text-strong);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .chat-info-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .chat-info-block {
+      display: grid;
+      gap: 8px;
+    }
+
+    .chat-info-block h4 {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--text-strong);
+      letter-spacing: 0.01em;
+    }
+
+    .chat-pill-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chat-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border-radius: 999px;
+      padding: 0 10px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--primary-strong);
+      background: rgba(31, 116, 183, 0.11);
+      border: 1px solid rgba(31, 116, 183, 0.18);
+    }
+
+    .chat-pill.chat-pill-muted {
+      color: var(--muted);
+      background: rgba(17, 62, 103, 0.07);
+      border-color: rgba(17, 62, 103, 0.14);
+    }
+
+    .chat-info-row {
+      width: 100%;
+      min-height: 44px;
+      border-radius: 12px;
+      border: 1px solid rgba(17, 62, 103, 0.1);
+      background: rgba(255, 255, 255, 0.82);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      text-align: left;
+      cursor: pointer;
+      color: var(--text-strong);
+      font-weight: 600;
+    }
+
+    @media (max-width: 1220px) {
+      .chat-shell {
+        grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
+      }
+
+      .chat-info {
+        display: none;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .chat-shell {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+
+      .chat-sidebar {
+        max-height: 46vh;
+      }
+
+      .chat-main {
+        min-height: 56vh;
+      }
+
+      .chat-back-btn {
+        display: inline-flex;
+      }
+
+      .chat-msg {
+        max-width: 90%;
+      }
+    }
+  </style>
+
+  <script>
+    (() => {
+      const searchInput = document.getElementById("chatSearch");
+      const threadList = document.getElementById("chatThreadList");
+      const tabs = Array.from(document.querySelectorAll(".chat-tab"));
+      const threads = Array.from(document.querySelectorAll(".chat-thread"));
+      const stream = document.getElementById("chatStream");
+      const composer = document.getElementById("chatComposer");
+      const input = document.getElementById("chatInput");
+      const sendBtn = document.getElementById("chatSendBtn");
+
+      function scrollToBottom() {
+        if (!stream) return;
+        stream.scrollTop = stream.scrollHeight;
+      }
+
+      function applyFilters() {
+        const query = (searchInput?.value || "").trim().toLowerCase();
+        const activeTab = tabs.find((tab) => tab.classList.contains("active"))?.dataset.tab || "all";
+
+        threads.forEach((thread) => {
+          const name = (thread.querySelector("strong")?.textContent || "").toLowerCase();
+          const preview = (thread.querySelector(".chat-thread-preview")?.textContent || "").toLowerCase();
+          const unread = Number(thread.dataset.unread || "0");
+          const rank = Number(thread.dataset.rank || "999");
+
+          const passesSearch = !query || name.includes(query) || preview.includes(query);
+          const passesTab = (
+            activeTab === "all"
+            || (activeTab === "unread" && unread > 0)
+            || (activeTab === "recent" && rank < 8)
+          );
+          thread.style.display = passesSearch && passesTab ? "" : "none";
+        });
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((item) => item.classList.remove("active"));
+          tab.classList.add("active");
+          applyFilters();
+        });
+      });
+
+      if (searchInput) {
+        searchInput.addEventListener("input", applyFilters);
+      }
+
+      if (composer && input) {
+        composer.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const content = input.value.trim();
+          const toUsername = composer.dataset.to || "";
+          if (!content || !toUsername) return;
+
+          if (sendBtn) sendBtn.disabled = true;
+          try {
+            const response = await fetch("/api/send-message", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ to_username: toUsername, content }),
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.success) {
+              throw new Error(payload.message || "Unable to send message.");
+            }
+
+            const item = payload.message_obj || {
+              content,
+              timestamp: "now",
+            };
+
+            const msgDate = String(item.timestamp || "").slice(0, 10);
+            if (msgDate && stream) {
+              const separators = Array.from(stream.querySelectorAll(".chat-day-sep span"));
+              const lastLabel = separators.length ? separators[separators.length - 1].textContent : "";
+              if (lastLabel !== msgDate) {
+                const sep = document.createElement("div");
+                sep.className = "chat-day-sep";
+                const label = document.createElement("span");
+                label.textContent = msgDate;
+                sep.appendChild(label);
+                stream.appendChild(sep);
+              }
+            }
+
+            const node = document.createElement("article");
+            node.className = "chat-msg mine";
+
+            const bubble = document.createElement("div");
+            bubble.className = "chat-bubble";
+            bubble.textContent = item.content || content;
+
+            const time = document.createElement("time");
+            time.className = "chat-meta";
+            time.textContent = item.timestamp || "now";
+
+            node.appendChild(bubble);
+            node.appendChild(time);
+            stream?.appendChild(node);
+
+            const activeThread = threadList?.querySelector(`.chat-thread[data-username="${toUsername}"]`);
+            if (activeThread) {
+              const preview = activeThread.querySelector(".chat-thread-preview");
+              const stamp = activeThread.querySelector(".chat-thread-time");
+              if (preview) preview.textContent = `You: ${item.content || content}`;
+              if (stamp) stamp.textContent = item.timestamp || "now";
+            }
+
+            input.value = "";
+            scrollToBottom();
+          } catch (error) {
+            alert(error.message || "Could not send message.");
+          } finally {
+            if (sendBtn) sendBtn.disabled = false;
+          }
+        });
+      }
+
+      scrollToBottom();
+      applyFilters();
+    })();
+  </script>
 {% endblock %}

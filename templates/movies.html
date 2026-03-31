@@ -27,7 +27,7 @@
       </p>
 
       <div class="hero-actions movie-redesign-actions">
-        <a class="btn btn-primary" href="#story-library">Go to library</a>
+        <a class="btn btn-primary" href="#story-library">Browse all</a>
         {% if is_logged_in %}
           <a class="btn btn-secondary" href="{{ url_for('therapists_page') }}">Book therapist support</a>
         {% else %}
@@ -52,28 +52,50 @@
     </article>
 
     <aside class="surface movie-redesign-spotlight" data-reveal>
-      <p class="eyebrow">Spotlight</p>
-      <div class="movie-redesign-spotlight-head">
-        {% if mood_match.poster_image %}
-          <img
-            class="movie-redesign-spotlight-poster"
-            src="{{ url_for('static', filename=mood_match.poster_image) }}"
-            alt="{{ mood_match.title }} poster"
-            loading="lazy"
-          />
-        {% else %}
-          <span class="movie-redesign-spotlight-icon">{{ mood_match.poster_emoji }}</span>
-        {% endif %}
-        <div>
-          <h2>{{ mood_match.title }}</h2>
-          <p>{{ mood_match.type|title }} • {{ mood_match.genre }} • {{ mood_match.year }}</p>
+      <div class="movie-redesign-spotlight-main">
+        <p class="eyebrow">Spotlight</p>
+        <div class="movie-redesign-spotlight-head">
+          {% if mood_match.poster_image %}
+            <img
+              class="movie-redesign-spotlight-poster"
+              src="{{ url_for('static', filename=mood_match.poster_image) }}"
+              alt="{{ mood_match.title }} poster"
+              loading="lazy"
+            />
+          {% else %}
+            <span class="movie-redesign-spotlight-icon">{{ mood_match.poster_emoji }}</span>
+          {% endif %}
+          <div>
+            <h2>{{ mood_match.title }}</h2>
+            <p>{{ mood_match.type|title }} • {{ mood_match.genre }} • {{ mood_match.year }}</p>
+          </div>
         </div>
-      </div>
-      <p class="movie-redesign-spotlight-copy">{{ mood_match.why_helps }}</p>
-      <div class="tag-cloud">
-        {% for tag in mood_match.mood_tags[:4] %}
-          <span>{{ tag }}</span>
-        {% endfor %}
+        <p class="movie-redesign-spotlight-copy">{{ mood_match.why_helps }}</p>
+        <div class="tag-cloud">
+          {% for tag in mood_match.mood_tags[:4] %}
+            <span>{{ tag }}</span>
+          {% endfor %}
+        </div>
+
+        <section class="movie-redesign-spotlight-more">
+          <article class="movie-redesign-spotlight-detail">
+            <span class="story-mini-kicker">About this movie</span>
+            <p>{{ mood_match.description }}</p>
+          </article>
+
+          {% if quick_picks|length > 1 %}
+            <article class="movie-redesign-spotlight-detail">
+              <span class="story-mini-kicker">If this helps, watch next</span>
+              <div class="movie-redesign-next-list">
+                {% for pick in quick_picks[:3] %}
+                  {% if pick.id != mood_match.id %}
+                    <a href="{{ url_for('movies_page', q=pick.title) }}#story-library">{{ pick.title }}</a>
+                  {% endif %}
+                {% endfor %}
+              </div>
+            </article>
+          {% endif %}
+        </section>
       </div>
 
       {% if movie_profile %}
@@ -169,33 +191,13 @@
     </p>
   </section>
 
-  {% if is_logged_in %}
-    <section class="surface dashboard-panel movie-redesign-personalize" data-reveal>
-      <details>
-        <summary>Customize interest profile (optional)</summary>
-        <p class="subcopy">Pick what helps you most so recommendations and dashboard insights feel more personal.</p>
-        <div class="interest-checkbox-grid" data-interest-grid>
-          {% for category in categories %}
-            <label class="interest-checkbox">
-              <input type="checkbox" value="{{ category }}" {% if category in movie_profile.profile.interests %}checked{% endif %} />
-              <span>{{ category }}</span>
-            </label>
-          {% endfor %}
-        </div>
-        <div class="button-group">
-          <button class="btn btn-secondary" type="button" data-save-interests>Save interests</button>
-        </div>
-      </details>
-    </section>
-  {% endif %}
-
   <section class="section-block movie-redesign-library-intro" data-reveal>
-    <div class="section-head home-section-head">
+    <div class="section-head home-section-head movie-redesign-library-head">
       <div>
         <p class="eyebrow">Story library</p>
         <h2>Browse the full collection</h2>
       </div>
-      <p class="subcopy">{{ movies|length }} results in this view.</p>
+      <p class="subcopy movie-redesign-results-count">{{ movies|length }} results in this view.</p>
     </div>
   </section>
 

@@ -2190,6 +2190,14 @@ def movies_page() -> str:
         user_data = ensure_user_movie_profile(username)
         movie_profile = build_movie_profile(username)
 
+    spotlight_movie = movie_profile["mood_match"] if movie_profile else (filtered[0] if filtered else MOVIES_DATA[0])
+    if not spotlight_movie or not spotlight_movie.get("poster_image"):
+        spotlight_movie = (
+            next((movie for movie in filtered if movie.get("poster_image")), None)
+            or next((movie for movie in MOVIES_DATA if movie.get("poster_image")), None)
+            or spotlight_movie
+        )
+
     return render_template(
         "movies.html",
         active_page="movies",
@@ -2202,7 +2210,7 @@ def movies_page() -> str:
         search_q=search_q,
         user_movie_data=user_data,
         movie_profile=movie_profile,
-        mood_match=movie_profile["mood_match"] if movie_profile else MOVIES_DATA[0],
+        mood_match=spotlight_movie,
         featured_story_arc=filtered[:3],
     )
 
@@ -3034,6 +3042,7 @@ def view_messages() -> str:
     """View all messages for current user."""
     current_user = session.get("user", {})
     current_username = current_user.get("username", "patient")
+    requested_partner = request.args.get("user", "").strip()
 
     my_messages = [
         msg for msg in MESSAGES_DATA
@@ -3056,6 +3065,33 @@ def view_messages() -> str:
         if msg.get("to_user") == current_username and not msg.get("read"):
             conversations[partner]["unread_count"] += 1
 
+    for convo in conversations.values():
+        convo["messages"] = sorted(convo["messages"], key=lambda item: item.get("timestamp", ""))
+        convo["latest_message"] = convo["messages"][-1] if convo["messages"] else None
+
+    conversation_items = sorted(
+        conversations.values(),
+        key=lambda convo: (convo.get("latest_message") or {}).get("timestamp", ""),
+        reverse=True,
+    )
+
+    selected_partner = requested_partner if requested_partner in conversations else ""
+    if not selected_partner and conversation_items:
+        selected_partner = conversation_items[0]["partner_username"]
+    selected_conversation = conversations.get(selected_partner)
+    current_profile = PATIENT_PROFILES.get(current_username, {})
+    selected_profile = (selected_conversation or {}).get("partner_profile", {}) or {}
+    shared_interests = sorted(
+        set(current_profile.get("interests", [])).intersection(set(selected_profile.get("interests", [])))
+    )
+    groups_lookup = {group["id"]: group for group in COMMUNITY_GROUPS}
+    shared_group_ids = set(current_profile.get("joined_communities", [])).intersection(
+        set(selected_profile.get("joined_communities", []))
+    )
+    shared_groups = sorted([
+        groups_lookup[group_id]["name"] for group_id in shared_group_ids if group_id in groups_lookup
+    ])
+
     for msg in my_messages:
         if msg.get("to_user") == current_username:
             msg["read"] = True
@@ -3067,6 +3103,11 @@ def view_messages() -> str:
         page_id="messages",
         page_title="Messages | Heal Hub",
         conversations=conversations,
+        conversation_items=conversation_items,
+        selected_partner=selected_partner,
+        selected_conversation=selected_conversation,
+        shared_interests=shared_interests,
+        shared_groups=shared_groups,
         current_user=current_user,
     )
 
