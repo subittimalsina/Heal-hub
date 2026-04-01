@@ -6,10 +6,10 @@
   {% set want_ids = user_movie_data.get('want_to_watch', []) if user_movie_data else [] %}
   {% set quick_picks = featured_story_arc if featured_story_arc else movies[:3] %}
   {% set mood_lanes = [
-    {"title": "Need healing", "category": "healing", "copy": "Gentle stories for emotional reset and steady comfort.", "tone": "primary"},
-    {"title": "Need motivation", "category": "motivation", "copy": "High-energy picks for courage, momentum, and focus.", "tone": "teal"},
-    {"title": "Need connection", "category": "friendship", "copy": "Warm titles around belonging, relationships, and support.", "tone": "amber"},
-    {"title": "Need calm support", "category": "mental wellness", "copy": "Thoughtful stories that make heavy days feel lighter.", "tone": "rose"},
+    {"title": "Drama stories", "category": "drama", "copy": "Emotion-first picks with grounded, reflective storytelling.", "tone": "primary"},
+    {"title": "Action stories", "category": "action", "copy": "Fast-paced titles when you want energy and momentum.", "tone": "teal"},
+    {"title": "Comedy stories", "category": "comedy", "copy": "Lighten the day with humor, warmth, and social connection.", "tone": "amber"},
+    {"title": "Romance stories", "category": "romance", "copy": "Connection-driven stories around love, care, and vulnerability.", "tone": "rose"},
   ] %}
 
   <section class="hero-grid movie-redesign-hero" data-reveal>
@@ -38,7 +38,7 @@
       <div class="hero-metrics-ribbon movie-redesign-stats">
         <div class="hero-ribbon-stat">
           <span class="meta-label">Stories now</span>
-          <strong>{{ movies|length }} filtered titles</strong>
+          <strong>{{ total_results }} filtered titles</strong>
         </div>
         <div class="hero-ribbon-stat">
           <span class="meta-label">Watched</span>
@@ -60,7 +60,9 @@
               class="movie-redesign-spotlight-poster"
               src="{{ url_for('static', filename=mood_match.poster_image) }}"
               alt="{{ mood_match.title }} poster"
-              loading="lazy"
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
             />
           {% else %}
             <span class="movie-redesign-spotlight-icon">{{ mood_match.poster_emoji }}</span>
@@ -197,9 +199,25 @@
         <p class="eyebrow">Story library</p>
         <h2>Browse the full collection</h2>
       </div>
-      <p class="subcopy movie-redesign-results-count">{{ movies|length }} results in this view.</p>
+      <p class="subcopy movie-redesign-results-count">
+        Showing {{ showing_from }}-{{ showing_to }} of {{ total_results }}.
+      </p>
     </div>
   </section>
+
+  {% if total_pages > 1 %}
+    <section class="surface dashboard-panel movie-redesign-controls" data-reveal>
+      <div class="button-group">
+        {% if has_prev_page %}
+          <a class="btn btn-secondary" href="{{ prev_page_href }}">Previous</a>
+        {% endif %}
+        <span class="status-chip status-neutral">Page {{ page_number }} of {{ total_pages }}</span>
+        {% if has_next_page %}
+          <a class="btn btn-primary" href="{{ next_page_href }}">Next</a>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
 
   <section class="story-card-grid story-card-grid-full movie-redesign-grid" id="story-library" data-reveal>
     {% if movies %}
@@ -213,6 +231,8 @@
                   src="{{ url_for('static', filename=movie.poster_image) }}"
                   alt="{{ movie.title }} poster"
                   loading="lazy"
+                  decoding="async"
+                  fetchpriority="low"
                 />
               {% else %}
                 <span class="movie-redesign-card-icon">{{ movie.poster_emoji }}</span>

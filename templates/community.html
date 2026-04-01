@@ -1,170 +1,462 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="dashboard-overview feature-page-hero" data-reveal>
-    <article class="surface dashboard-panel dashboard-intro-panel">
-      <div class="hero-signal-row">
-        <span class="signal-chip signal-chip-primary">Community Support</span>
-        <span class="signal-chip signal-chip-teal">Warm, Moderated Spaces</span>
-        <span class="signal-chip signal-chip-amber">Demo Posts Included</span>
-      </div>
-      <div class="dashboard-intro-copy">
-        <div>
-          <p class="eyebrow">Belonging matters</p>
-          <h1>Find people who understand what you're carrying.</h1>
-        </div>
-        <p class="lead">
-          Heal Hub community circles are designed to reduce isolation, encourage safe sharing, and remind people that support can come from others who truly relate.
-        </p>
-      </div>
-
-      <div class="hub-stat-band">
-        <div class="hero-meta-card">
-          <span class="meta-label">Support circles</span>
-          <strong>{{ groups|length }}</strong>
-          <small>active spaces to explore</small>
-        </div>
-        <div class="hero-meta-card">
-          <span class="meta-label">Live discussions</span>
-          <strong>{{ posts|length }}</strong>
-          <small>threads visible right now</small>
-        </div>
-        {% if community_profile %}
-          <div class="hero-meta-card">
-            <span class="meta-label">Joined groups</span>
-            <strong>{{ community_profile.joined_groups|length }}</strong>
-            <small>circles in your support map</small>
-          </div>
-        {% endif %}
-      </div>
-    </article>
-
-    <aside class="dashboard-overview-side">
-      <article class="surface dashboard-panel dashboard-status-card">
-        <span class="meta-label">Selected space</span>
-        <strong>{{ selected_group.name if selected_group else "All conversations" }}</strong>
-        <p>{{ selected_group.description if selected_group else "Browse the most supportive recent posts across the community." }}</p>
-      </article>
-
-      {% if community_profile %}
-        <article class="surface dashboard-panel dashboard-status-card">
-          <span class="meta-label">Your support summary</span>
-          <strong>{{ community_profile.profile.support_received }} supportive reactions</strong>
-          <p>{{ community_profile.support_summary }}</p>
-        </article>
-      {% endif %}
-    </aside>
-  </section>
-
-  <section class="dashboard-support-grid">
-    <article class="surface dashboard-panel" data-reveal>
-      <div class="dashboard-section-head">
-        <div>
-          <p class="eyebrow">Community channels</p>
-          <h2>Choose a circle that matches your moment</h2>
-        </div>
-      </div>
-      <div class="community-group-grid">
-        {% for group in groups %}
-          <a class="community-group-card {% if selected_group and selected_group.id == group.id %}active{% endif %}" href="{{ url_for('community_page', group=group.id) }}">
-            <div class="community-group-head">
-              <span class="community-group-icon">{{ group.icon }}</span>
-              <div>
-                <strong>{{ group.name }}</strong>
-                <p>{{ group.description }}</p>
-              </div>
+  <section class="community-neo" data-reveal>
+    <div class="community-neo-layout">
+      <div class="community-neo-main">
+        <article class="surface community-neo-welcome">
+          <div class="community-neo-banner">
+            <div>
+              <p class="eyebrow">Community</p>
+              <h1>
+                {% if is_logged_in and current_user %}
+                  Welcome back, {{ current_user.display_name or current_user.username }}
+                {% else %}
+                  Welcome to Heal Hub Community
+                {% endif %}
+              </h1>
+              <p class="lead" data-page-feedback>
+                {% if community_profile %}
+                  {{ community_profile.highlight_message }}
+                {% else %}
+                  Read, react, and join a circle when you are ready.
+                {% endif %}
+              </p>
             </div>
-            <span class="status-chip status-neutral">{{ group.members }} members</span>
-          </a>
-        {% endfor %}
-      </div>
-    </article>
-
-    {% if community_profile %}
-      <article class="surface dashboard-panel" data-reveal>
-        <div class="dashboard-section-head">
-          <div>
-            <p class="eyebrow">Trending topics</p>
-            <h2>What people are connecting around</h2>
+            <div class="community-neo-banner-actions">
+              <a class="btn btn-ghost" href="#community-controls">Filter</a>
+              {% if is_logged_in %}
+                <a class="btn btn-primary" href="#community-compose">New post</a>
+              {% else %}
+                <a class="btn btn-primary" href="{{ url_for('login', next=url_for('community_page')) }}">Login</a>
+              {% endif %}
+            </div>
           </div>
-        </div>
-        <div class="tag-cloud">
-          {% for topic in community_profile.trending_topics %}
-            <span>{{ topic }}</span>
-          {% endfor %}
-        </div>
-        {% if community_profile.recommended_groups %}
-          <p class="subcopy">Recommended next circles: {{ community_profile.recommended_groups|map(attribute='name')|join(", ") }}</p>
-        {% endif %}
-      </article>
-    {% endif %}
-  </section>
 
-  {% if is_logged_in %}
-    <section class="surface dashboard-panel community-composer" data-reveal>
-      <div class="dashboard-section-head">
-        <div>
-          <p class="eyebrow">Share how you feel</p>
-          <h2>Post something honest, gentle, or hopeful</h2>
-        </div>
-      </div>
-      <div class="community-compose-grid">
-        <label>
-          <span>Post to</span>
-          <select data-community-group>
-            {% for group in groups %}
-              <option value="{{ group.id }}" {% if selected_group and selected_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
+          <div class="community-neo-kpi-row">
+            <article class="community-neo-kpi-card">
+              <small>Total members</small>
+              <strong>{{ group_cards|sum(attribute='members') }}</strong>
+            </article>
+            <article class="community-neo-kpi-card">
+              <small>Active circles</small>
+              <strong>{{ group_cards|length }}</strong>
+            </article>
+            <article class="community-neo-kpi-card">
+              <small>Posts in view</small>
+              <strong>{{ posts|length }}</strong>
+            </article>
+            <article class="community-neo-kpi-card">
+              <small>Upcoming events</small>
+              <strong>{{ upcoming_events|length }}</strong>
+            </article>
+          </div>
+        </article>
+
+        <section class="surface community-neo-controls" id="community-controls" data-reveal>
+          <div class="community-neo-section-head">
+            <div>
+              <p class="eyebrow">Community Feed</p>
+              <h2>Find your lane fast</h2>
+            </div>
+          </div>
+
+          <form class="community-neo-search" method="get">
+            {% if selected_group %}
+              <input type="hidden" name="group" value="{{ selected_group.id }}" />
+            {% endif %}
+            {% if people_q %}
+              <input type="hidden" name="people_q" value="{{ people_q }}" />
+            {% endif %}
+            {% if people_interest %}
+              <input type="hidden" name="people_interest" value="{{ people_interest }}" />
+            {% endif %}
+            <input type="hidden" name="feed" value="{{ feed_filter }}" />
+            <label>
+              <span>Search posts</span>
+              <input type="text" name="post_q" value="{{ post_q }}" placeholder="Try: anxiety, boundaries, burnout..." />
+            </label>
+            <label>
+              <span>Sort</span>
+              <select name="sort">
+                <option value="recent" {% if sort_by == 'recent' %}selected{% endif %}>Latest first</option>
+                <option value="supported" {% if sort_by == 'supported' %}selected{% endif %}>Most supported</option>
+                <option value="discussed" {% if sort_by == 'discussed' %}selected{% endif %}>Most discussed</option>
+                <option value="saved" {% if sort_by == 'saved' %}selected{% endif %}>Most saved</option>
+              </select>
+            </label>
+            <button class="btn btn-primary" type="submit">Apply</button>
+          </form>
+
+          <div class="community-neo-filter-row" aria-label="Feed filters">
+            {% for item in feed_filters %}
+              <a class="community-neo-pill {% if item.active %}active{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
             {% endfor %}
-          </select>
-        </label>
-        <label class="compose-textarea">
-          <span>Your message</span>
-          <textarea rows="4" placeholder="Share what you're carrying, what helped today, or ask for support..." data-community-post></textarea>
-        </label>
-      </div>
-      <div class="button-group">
-        <button class="btn btn-primary" type="button" data-submit-post>Post to community</button>
-      </div>
-      <p class="subcopy" data-page-feedback>Warm, respectful sharing helps make the space feel safer for everyone.</p>
-    </section>
-  {% endif %}
-
-  <section class="community-post-list" data-reveal>
-    {% for post in posts %}
-      <article class="surface community-post-card">
-        <div class="community-post-head">
-          <div>
-            <strong>{{ post.author }}</strong>
-            <p>{{ post.timestamp }}</p>
           </div>
-          <span class="status-chip status-neutral">
-            {{ groups|selectattr('id', 'equalto', post.group_id)|map(attribute='name')|first }}
-          </span>
-        </div>
-        <p class="community-post-copy">{{ post.content }}</p>
-        <div class="community-post-actions">
-          <button class="btn btn-ghost" type="button" data-support-post data-post-id="{{ post.id }}">Support • {{ post.likes }}</button>
-        </div>
 
-        {% if post.replies %}
-          <div class="reply-list">
-            {% for reply in post.replies %}
-              <article class="reply-card">
-                <strong>{{ reply.author }}</strong>
-                <p>{{ reply.content }}</p>
-                <small>{{ reply.timestamp }}</small>
+          <div class="community-neo-circle-row" id="community-groups">
+            {% for group in group_cards[:6] %}
+              <article class="community-neo-circle {% if selected_group and selected_group.id == group.id %}active{% endif %}">
+                <a
+                  class="community-neo-circle-link"
+                  href="{{ url_for('community_page', group=group.id, feed=feed_filter, sort=sort_by, post_q=post_q) }}#community-feed"
+                >
+                  <span class="community-neo-circle-icon">{{ group.icon }}</span>
+                  <span class="community-neo-circle-copy">
+                    <strong>{{ group.name }}</strong>
+                    <small>{{ group.description }}</small>
+                  </span>
+                </a>
+                {% if is_logged_in %}
+                  {% if group.is_joined %}
+                    <span class="status-chip status-stable">Joined</span>
+                  {% else %}
+                    <button class="btn btn-ghost" type="button" data-join-community data-group-id="{{ group.id }}">Join</button>
+                  {% endif %}
+                {% else %}
+                  <a class="btn btn-ghost" href="{{ url_for('login', next=url_for('community_page', group=group.id)) }}">Login</a>
+                {% endif %}
               </article>
             {% endfor %}
           </div>
-        {% endif %}
+
+          <article class="community-neo-feed-context">
+            {% if selected_group %}
+              <div class="community-neo-feed-context-head">
+                <div>
+                  <p class="eyebrow">Circle in focus</p>
+                  <h3>{{ selected_group.icon }} {{ selected_group.name }}</h3>
+                </div>
+                <span class="status-chip status-neutral">{{ selected_group.members }} members</span>
+              </div>
+              <p>{{ selected_group.description }}</p>
+              <div class="community-neo-feed-context-meta">
+                <span>{{ selected_group.category }}</span>
+                {% if selected_group.pace %}
+                  <span>{{ selected_group.pace }}</span>
+                {% endif %}
+                {% if selected_group.session %}
+                  <span>{{ selected_group.session }}</span>
+                {% endif %}
+                {% if selected_group.host %}
+                  <span>{{ selected_group.host }}</span>
+                {% endif %}
+              </div>
+              {% if selected_group.focus_tags %}
+                <div class="community-neo-feed-context-tags">
+                  {% for tag in selected_group.focus_tags[:4] %}
+                    <span>#{{ tag|replace(' ', '')|lower }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% else %}
+              <div class="community-neo-feed-context-head">
+                <div>
+                  <p class="eyebrow">Community snapshot</p>
+                  <h3>Choose a circle to see more context</h3>
+                </div>
+              </div>
+              <p>
+                Pick any circle above to view its focus, pace, host style, and active members while you read the feed.
+              </p>
+              <div class="community-neo-feed-context-meta">
+                <span>{{ group_cards|length }} circles</span>
+                <span>{{ group_cards|sum(attribute='members') }} total members</span>
+                <span>{{ upcoming_events|length }} upcoming events</span>
+              </div>
+              <div class="community-neo-feed-context-tags">
+                {% for group in group_cards[:4] %}
+                  <span>{{ group.icon }} {{ group.name }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </article>
+        </section>
 
         {% if is_logged_in %}
-          <div class="reply-composer">
-            <textarea rows="2" placeholder="Write a supportive reply..." data-reply-input="{{ post.id }}"></textarea>
-            <button class="btn btn-secondary" type="button" data-reply-post data-post-id="{{ post.id }}">Reply</button>
-          </div>
+          <section class="surface community-neo-compose" id="community-compose" data-reveal>
+            <div class="community-neo-section-head">
+              <div>
+                <p class="eyebrow">Create Post</p>
+                <h2>Share what is real today</h2>
+              </div>
+              <span class="status-chip status-neutral" data-draft-status>Draft not saved yet</span>
+            </div>
+
+            <div class="community-neo-prompt-row" aria-label="Prompt shortcuts">
+              {% for prompt in community_prompts %}
+                <button
+                  class="community-neo-prompt-chip"
+                  type="button"
+                  data-community-prompt
+                  data-prompt-text="{{ prompt.text }}"
+                  data-prompt-kind="{{ prompt.kind }}"
+                  data-prompt-mood="{{ prompt.mood }}"
+                  data-prompt-label="{{ prompt.label }}"
+                >
+                  {{ prompt.label }}
+                </button>
+              {% endfor %}
+            </div>
+
+            <div class="community-neo-compose-grid">
+              <label>
+                <span>Circle</span>
+                <select data-community-group>
+                  {% for group in group_cards %}
+                    <option value="{{ group.id }}" {% if selected_group and selected_group.id == group.id %}selected{% endif %}>{{ group.name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                <span>Type</span>
+                <select data-community-kind>
+                  {% for option in community_post_kind_options %}
+                    <option value="{{ option.id }}">{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>
+                <span>Mood</span>
+                <select data-community-mood>
+                  {% for option in community_mood_options %}
+                    <option value="{{ option.id }}">{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="community-neo-anon-toggle">
+                <input type="checkbox" data-community-anonymous />
+                <span>Post anonymously</span>
+              </label>
+            </div>
+
+            <label class="community-neo-compose-text">
+              <span>Message</span>
+              <textarea
+                rows="4"
+                maxlength="420"
+                placeholder="Share your update, question, or one small win..."
+                data-community-post
+              ></textarea>
+            </label>
+
+            <div class="community-neo-compose-actions">
+              <strong data-community-count>0 / 420</strong>
+              <button class="btn btn-ghost" type="button" data-clear-community-draft>Clear</button>
+              <button class="btn btn-primary" type="button" data-submit-post>Post</button>
+            </div>
+          </section>
+        {% else %}
+          <section class="surface community-neo-login" data-reveal>
+            <p>Login to post, save, and react in the feed.</p>
+            <a class="btn btn-primary" href="{{ url_for('login', next=url_for('community_page')) }}">Login to participate</a>
+          </section>
         {% endif %}
-      </article>
-    {% endfor %}
+
+        <section class="community-neo-post-list" id="community-feed" data-reveal>
+          {% for post in posts %}
+            <article
+              class="surface community-neo-post-card"
+              data-post-card
+              data-post-id="{{ post.id }}"
+              data-post-author-username="{{ post.author_username }}"
+            >
+              <header class="community-neo-post-head">
+                <div class="community-neo-post-author">
+                  <span class="story-card-icon community-post-avatar">{{ post.author_badge }}</span>
+                  <div>
+                    <strong>{{ post.author }}</strong>
+                    <p>
+                      {{ post.group.name }}
+                      {% if post.group.members %} • {{ post.group.members }} members{% endif %}
+                      • {{ post.timestamp }}
+                    </p>
+                    {% if post.group.description %}
+                      <small class="community-neo-post-community-note">{{ post.group.description }}</small>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="community-neo-post-chips">
+                  <span class="community-neo-pill active">{{ post.kind_label }}</span>
+                  <span class="community-neo-pill">{{ post.mood_label }}</span>
+                  {% if post.anonymous %}
+                    <span class="community-neo-pill">Anonymous</span>
+                  {% endif %}
+                </div>
+              </header>
+
+              <p class="community-neo-post-copy">{{ post.content }}</p>
+
+              {% if post.tags %}
+                <div class="community-neo-tag-row">
+                  {% for tag in post.tags %}
+                    <span>#{{ tag }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+
+              <div class="community-neo-post-stats">
+                <span><strong data-reaction-total>{{ post.reaction_total }}</strong> reactions</span>
+                <span><strong data-reply-count>{{ post.reply_count }}</strong> replies</span>
+                <span><strong data-bookmark-count>{{ post.bookmarks }}</strong> saves</span>
+              </div>
+
+              <div class="community-neo-reactions">
+                {% for reaction in community_reaction_options %}
+                  <button
+                    class="community-reaction-btn"
+                    type="button"
+                    data-support-post
+                    data-post-id="{{ post.id }}"
+                    data-reaction-type="{{ reaction.id }}"
+                  >
+                    <span>{{ reaction.emoji }} {{ reaction.label }}</span>
+                    <strong data-reaction-count="{{ reaction.id }}">{{ post.reactions[reaction.id] }}</strong>
+                  </button>
+                {% endfor %}
+              </div>
+
+              {% if is_logged_in %}
+                <div class="community-neo-post-actions">
+                  <button class="btn btn-ghost" type="button" data-bookmark-post data-post-id="{{ post.id }}">Save</button>
+                  <button class="btn btn-ghost" type="button" data-report-post data-post-id="{{ post.id }}">Report</button>
+                  {% if post.author_username %}
+                    <button class="btn btn-ghost" type="button" data-mute-author data-author-username="{{ post.author_username }}">Mute</button>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              <div class="reply-list" data-reply-list>
+                {% for reply in post.replies %}
+                  <article class="reply-card">
+                    <div class="community-reply-head">
+                      <span class="story-card-icon community-reply-avatar">{{ reply.avatar }}</span>
+                      <div>
+                        <strong>{{ reply.author }}</strong>
+                        <small>{{ reply.timestamp }}</small>
+                      </div>
+                    </div>
+                    <p>{{ reply.content }}</p>
+                  </article>
+                {% endfor %}
+              </div>
+
+              {% if is_logged_in %}
+                <div class="community-neo-reply-composer">
+                  <textarea rows="2" maxlength="220" placeholder="Write a supportive reply..." data-reply-input="{{ post.id }}"></textarea>
+                  <button class="btn btn-secondary" type="button" data-reply-post data-post-id="{{ post.id }}">Reply</button>
+                </div>
+              {% endif %}
+            </article>
+          {% else %}
+            <article class="surface community-neo-empty">
+              <strong>No posts in this filter yet.</strong>
+              <p>Try another feed tab or clear search.</p>
+            </article>
+          {% endfor %}
+        </section>
+      </div>
+
+      <aside class="community-neo-side">
+        <article class="surface community-neo-side-card">
+          <p class="eyebrow">Community Pulse</p>
+          <div class="community-neo-side-metrics">
+            <div>
+              <small>Members</small>
+              <strong>{{ group_cards|sum(attribute='members') }}</strong>
+            </div>
+            <div>
+              <small>Circle posts</small>
+              <strong>{{ posts|length }}</strong>
+            </div>
+            <div>
+              <small>Events</small>
+              <strong>{{ upcoming_events|length }}</strong>
+            </div>
+            <div>
+              <small>Healthy rate</small>
+              <strong>98%</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="surface community-neo-side-card" id="community-people">
+          <p class="eyebrow">Online Now</p>
+          {% set sidebar_people = recommended_people if recommended_people else people_results[:6] %}
+          {% if sidebar_people %}
+            <div class="community-neo-online-list">
+              {% for person in sidebar_people[:6] %}
+                <div class="community-person-card community-neo-online-item">
+                  <div class="community-neo-online-meta">
+                    <span class="story-card-icon">{{ person.avatar }}</span>
+                    <div>
+                      <strong>{{ person.display_name }}</strong>
+                      <small>{{ person.location }}</small>
+                    </div>
+                  </div>
+                  {% if is_logged_in %}
+                    {% if person.relationship_status == 'connected' %}
+                      <a class="btn btn-ghost" href="{{ url_for('view_messages', user=person.username) }}">Chat</a>
+                    {% elif person.relationship_status == 'request_received' %}
+                      <button class="btn btn-ghost" type="button" data-accept-connection data-username="{{ person.username }}">Accept</button>
+                    {% elif person.relationship_status == 'request_sent' %}
+                      <span class="status-chip status-neutral">Sent</span>
+                    {% else %}
+                      <button class="btn btn-ghost" type="button" data-connect-user data-username="{{ person.username }}">Connect</button>
+                    {% endif %}
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="subcopy">Login to discover people who share your circles.</p>
+            {% if not is_logged_in %}
+              <a class="btn btn-primary" href="{{ url_for('login', next=url_for('community_page')) }}">Login</a>
+            {% endif %}
+          {% endif %}
+        </article>
+
+        <article class="surface community-neo-side-card">
+          <p class="eyebrow">Trending tags</p>
+          <div class="community-neo-trend-list">
+            {% if community_profile and community_profile.trending_topics %}
+              {% for tag in community_profile.trending_topics %}
+                <span>#{{ tag }}</span>
+              {% endfor %}
+            {% else %}
+              {% for group in group_cards[:6] %}
+                <span>#{{ group.category|replace(' ', '')|lower }}</span>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </article>
+
+        <article class="surface community-neo-side-card">
+          <p class="eyebrow">Upcoming circles</p>
+          <div class="community-neo-events">
+            {% for event in upcoming_events[:3] %}
+              <div class="community-neo-event-item">
+                <strong>{{ event.title }}</strong>
+                <small>{{ event.time_label }} • {{ event.group.name }}</small>
+              </div>
+            {% else %}
+              <small>No upcoming sessions yet.</small>
+            {% endfor %}
+          </div>
+        </article>
+
+        <article class="surface community-neo-side-card">
+          <p class="eyebrow">Safety</p>
+          <div class="community-neo-guideline-list">
+            {% for item in community_guidelines %}
+              <div>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.detail }}</small>
+              </div>
+            {% endfor %}
+          </div>
+        </article>
+      </aside>
+    </div>
   </section>
 {% endblock %}

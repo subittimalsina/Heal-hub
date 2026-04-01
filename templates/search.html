@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="surface dashboard-panel search-hero" data-reveal>
+    <div class="dashboard-intro-copy">
+      <div>
+        <p class="eyebrow">Quick search</p>
+        <h1>Find what you need</h1>
+      </div>
+      <p class="lead">Stories, people, and community in one place.</p>
+    </div>
+
+    <form class="search-form" method="get" action="{{ url_for('search_page') }}" role="search">
+      <input type="search" name="q" value="{{ query }}" placeholder="Try: anxiety, Mina, healing, burnout..." autocomplete="off" />
+      <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+
+    {% if query %}
+      {% if total_results > 0 %}
+        <p class="subcopy">{{ total_results }} matches found.</p>
+      {% else %}
+        <p class="subcopy">No direct match yet. Try keywords like: healing, anxiety, Mina, burnout.</p>
+        <div class="button-group">
+          <a class="btn btn-ghost" href="{{ url_for('movies_page') }}">Browse stories</a>
+          <a class="btn btn-ghost" href="{{ url_for('community_page') }}">Open community</a>
+          <a class="btn btn-ghost" href="{{ url_for('therapists_page') }}">Find therapist</a>
+        </div>
+      {% endif %}
+    {% else %}
+      <p class="subcopy">Start typing to search across all three sections.</p>
+    {% endif %}
+  </section>
+
+  {% if query and total_results > 0 %}
+    <section class="search-grid" data-reveal>
+      <article class="surface dashboard-panel search-column">
+        <div class="dashboard-section-head compact-section-head">
+          <div>
+            <p class="eyebrow">Stories</p>
+            <h2>{{ movie_results|length }} found</h2>
+          </div>
+        </div>
+        <div class="search-result-list">
+          {% for movie in movie_results %}
+            <a class="search-result-card" href="{{ url_for('movies_page', q=movie.title) }}">
+              {% if movie.poster_image %}
+                <img src="{{ url_for('static', filename=movie.poster_image) }}" alt="{{ movie.title }} poster" loading="lazy" />
+              {% else %}
+                <span class="search-result-icon">{{ movie.poster_emoji }}</span>
+              {% endif %}
+              <div>
+                <strong>{{ movie.title }}</strong>
+                <small>{{ movie.type|title }} • {{ movie.genre }} • {{ movie.year }}</small>
+                <p>{{ movie.description }}</p>
+              </div>
+            </a>
+          {% else %}
+            <div class="notice-banner">No story matches yet.</div>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="surface dashboard-panel search-column">
+        <div class="dashboard-section-head compact-section-head">
+          <div>
+            <p class="eyebrow">People</p>
+            <h2>{{ people_results|length }} found</h2>
+          </div>
+        </div>
+        <div class="search-result-list">
+          {% for person in people_results %}
+            <article class="search-result-card">
+              <span class="search-result-icon">{{ person.avatar }}</span>
+              <div>
+                <strong>{{ person.display_name }}</strong>
+                <small>{{ person.location }}</small>
+                <p>{{ person.bio }}</p>
+                {% if is_logged_in %}
+                  <a class="btn btn-ghost" href="{{ url_for('view_patient_profile', username=person.username) }}">Open profile</a>
+                {% else %}
+                  <a class="btn btn-ghost" href="{{ url_for('login', next=url_for('search_page', q=query)) }}">Login to view</a>
+                {% endif %}
+              </div>
+            </article>
+          {% else %}
+            <div class="notice-banner">No people matches yet.</div>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="surface dashboard-panel search-column">
+        <div class="dashboard-section-head compact-section-head">
+          <div>
+            <p class="eyebrow">Community</p>
+            <h2>{{ community_results|length }} found</h2>
+          </div>
+        </div>
+        <div class="search-result-list">
+          {% for item in community_results %}
+            <a class="search-result-card" href="{{ item.href }}">
+              <span class="search-result-icon">{{ item.icon }}</span>
+              <div>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.subtitle }}</small>
+                <p>{{ item.snippet }}</p>
+              </div>
+            </a>
+          {% else %}
+            <div class="notice-banner">No community matches yet.</div>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+  {% endif %}
+{% endblock %}

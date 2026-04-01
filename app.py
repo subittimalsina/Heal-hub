@@ -1556,6 +1556,7 @@ def inject_template_state() -> dict[str, Any]:
     return {
         "current_user": session.get("user"),
         "is_logged_in": "user" in session,
+        "global_search_q": request.args.get("q", "").strip() if request.endpoint == "search_page" else "",
         "demo_users": [
             {
                 "username": username,
@@ -2129,6 +2130,136 @@ MOVIES_DATA: list[dict[str, Any]] = [
     },
 ]
 
+
+MOVIE_POSTER_EMOJI_BY_CATEGORY: dict[str, str] = {
+    "action": "🔥",
+    "adventure": "🧭",
+    "anime": "⚔️",
+    "biography": "📘",
+    "comedy": "😄",
+    "crime": "🕵️",
+    "documentary": "🎬",
+    "drama": "🎭",
+    "family": "🏡",
+    "fantasy": "✨",
+    "history": "🏛️",
+    "horror": "👻",
+    "music": "🎵",
+    "musical": "🎤",
+    "mystery": "🧩",
+    "romance": "💞",
+    "sci-fi": "🚀",
+    "sport": "🏅",
+    "thriller": "⚡",
+    "war": "🛡️",
+}
+
+
+def _load_poster_catalog_from_metadata(seed_movies: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Build movies catalog from poster metadata generated from manifest + OMDb."""
+    metadata_path = DATA_DIR / "poster_catalog_metadata.json"
+    posters_dir = BASE_DIR / "static" / "images" / "posters"
+
+    if not metadata_path.exists():
+        return [movie for movie in seed_movies if movie.get("poster_image")]
+
+    try:
+        payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return [movie for movie in seed_movies if movie.get("poster_image")]
+
+    items = payload.get("items", [])
+    if not isinstance(items, list):
+        return [movie for movie in seed_movies if movie.get("poster_image")]
+
+    catalog: list[dict[str, Any]] = []
+    seen_titles: set[str] = set()
+    seen_files: set[str] = set()
+
+    for index, raw in enumerate(items, start=1):
+        title = str(raw.get("title", "")).strip()
+        poster_file = str(raw.get("file", "")).strip()
+        if not title or not poster_file:
+            continue
+        if title.lower() in seen_titles or poster_file in seen_files:
+            continue
+        if not (posters_dir / poster_file).exists():
+            continue
+
+        raw_type = str(raw.get("type", "movie")).strip().lower()
+        media_type = "series" if raw_type == "series" else "movie"
+
+        genres = []
+        for entry in raw.get("genres", []):
+            cleaned = str(entry).strip().lower()
+            if cleaned == "animation":
+                cleaned = "anime"
+            if cleaned and cleaned not in genres:
+                genres.append(cleaned)
+        if not genres:
+            genres = ["drama"]
+
+        raw_genre_display = str(raw.get("genre_display", "")).strip()
+        if raw_genre_display:
+            genre_parts = [part.strip() for part in raw_genre_display.split(",") if part.strip()]
+            normalized_parts = ["Anime" if part.lower() == "animation" else part for part in genre_parts]
+            genre_display = ", ".join(normalized_parts) if normalized_parts else ", ".join(g.title() for g in genres[:3])
+        else:
+            genre_display = ", ".join(g.title() for g in genres[:3])
+
+        try:
+            year = int(raw.get("year", 0) or 0)
+        except (TypeError, ValueError):
+            year = 0
+
+        description = str(raw.get("description", "")).strip() or f"{title} is a {media_type} title in {genre_display}."
+        why_helps = str(raw.get("why_helps", "")).strip() or (
+            "A well-crafted story that can support reflection, focus, or emotional reset."
+        )
+
+        mood_tags = genres[:3] or ["steady"]
+        primary = genres[0]
+
+        movie = {
+            "id": f"mov-{index:03d}",
+            "title": title,
+            "type": media_type,
+            "genre": genre_display,
+            "year": year,
+            "categories": genres[:3],
+            "description": description,
+            "why_helps": why_helps,
+            "mood_tags": mood_tags,
+            "poster_emoji": MOVIE_POSTER_EMOJI_BY_CATEGORY.get(primary, "🎬"),
+            "poster_image": f"images/posters/{poster_file}",
+        }
+        catalog.append(movie)
+        seen_titles.add(title.lower())
+        seen_files.add(poster_file)
+
+    return catalog if catalog else [movie for movie in seed_movies if movie.get("poster_image")]
+
+
+def _build_movie_categories(catalog: list[dict[str, Any]], limit: int = 24) -> list[str]:
+    counts: dict[str, int] = {}
+    allowed = set(MOVIE_POSTER_EMOJI_BY_CATEGORY.keys())
+    for movie in catalog:
+        for category in movie.get("categories", []):
+            key = str(category).strip().lower()
+            if not key or key not in allowed:
+                continue
+            counts[key] = counts.get(key, 0) + 1
+
+    if not counts:
+        return ["drama", "comedy", "action", "romance"]
+
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    return [category for category, _ in ordered[:limit]]
+
+
+# Replace the legacy seed list with poster-backed catalog and remove no-poster entries.
+MOVIES_DATA = _load_poster_catalog_from_metadata(MOVIES_DATA)
+
 # In-memory user movie interactions (for demo)
 USER_MOVIE_DATA: dict[str, dict[str, Any]] = {
     "patient": {
@@ -2160,19 +2291,18 @@ USER_MOVIE_DATA: dict[str, dict[str, Any]] = {
     }
 }
 
-MOVIE_CATEGORIES = [
-    "motivation", "healing", "self-growth", "inner child", "friendship",
-    "women empowerment", "life struggles", "mental wellness", "inspiration",
-    "heist", "crime", "comedy", "horror", "thriller", "supernatural",
-    "fantasy", "action", "gothic", "romance", "sitcom", "family", "spy",
-    "faith", "drama",
-]
+MOVIE_CATEGORIES = _build_movie_categories(MOVIES_DATA)
 
 
 @app.get("/movies")
 def movies_page() -> str:
     category = request.args.get("category", "").strip().lower()
     search_q = request.args.get("q", "").strip().lower()
+    try:
+        page_number = int(request.args.get("page", "1") or "1")
+    except ValueError:
+        page_number = 1
+
     filtered = MOVIES_DATA
     if category:
         filtered = [m for m in filtered if category in m["categories"]]
@@ -2181,6 +2311,27 @@ def movies_page() -> str:
 
     # Prioritize entries that have uploaded poster images so new poster-based movies surface first.
     filtered = sorted(filtered, key=lambda movie: 0 if movie.get("poster_image") else 1)
+
+    per_page = 18
+    total_results = len(filtered)
+    total_pages = max(1, (total_results + per_page - 1) // per_page)
+    page_number = max(1, min(page_number, total_pages))
+    start_index = (page_number - 1) * per_page
+    end_index = start_index + per_page
+    page_movies = filtered[start_index:end_index]
+
+    def movies_href(page: int) -> str:
+        params: dict[str, Any] = {}
+        if category:
+            params["category"] = category
+        if search_q:
+            params["q"] = search_q
+        if page > 1:
+            params["page"] = page
+        return url_for("movies_page", **params) + "#story-library"
+
+    showing_from = start_index + 1 if total_results else 0
+    showing_to = min(end_index, total_results)
 
     user = session.get("user")
     user_data = {}
@@ -2204,7 +2355,16 @@ def movies_page() -> str:
         body_class="page-movies",
         page_id="movies",
         page_title="Healing Through Stories | Heal Hub",
-        movies=filtered,
+        movies=page_movies,
+        total_results=total_results,
+        showing_from=showing_from,
+        showing_to=showing_to,
+        page_number=page_number,
+        total_pages=total_pages,
+        has_prev_page=page_number > 1,
+        has_next_page=page_number < total_pages,
+        prev_page_href=movies_href(page_number - 1),
+        next_page_href=movies_href(page_number + 1),
         categories=MOVIE_CATEGORIES,
         selected_category=category,
         search_q=search_q,
@@ -2212,6 +2372,120 @@ def movies_page() -> str:
         movie_profile=movie_profile,
         mood_match=spotlight_movie,
         featured_story_arc=filtered[:3],
+    )
+
+
+@app.get("/search")
+def search_page() -> str:
+    query = request.args.get("q", "").strip()
+    needle = query.lower()
+
+    movie_results: list[dict[str, Any]] = []
+    people_results: list[dict[str, Any]] = []
+    community_results: list[dict[str, Any]] = []
+
+    if needle:
+        movie_results = [
+            movie
+            for movie in MOVIES_DATA
+            if needle in movie.get("title", "").lower()
+            or needle in movie.get("description", "").lower()
+            or needle in movie.get("genre", "").lower()
+            or needle in " ".join(movie.get("categories", [])).lower()
+        ]
+        movie_results.sort(
+            key=lambda movie: (
+                needle not in movie.get("title", "").lower(),
+                0 if movie.get("poster_image") else 1,
+                -(movie.get("year") or 0),
+            )
+        )
+        movie_results = movie_results[:8]
+
+        current_username = (session.get("user") or {}).get("username", "")
+        people_results = []
+        for username, profile in PATIENT_PROFILES.items():
+            if current_username and username == current_username:
+                continue
+            haystack = " ".join(
+                [
+                    str(profile.get("display_name", "")),
+                    str(profile.get("bio", "")),
+                    str(profile.get("location", "")),
+                    " ".join(profile.get("interests", [])),
+                    " ".join(profile.get("badges", [])),
+                ]
+            ).lower()
+            if needle in haystack:
+                people_results.append(profile)
+        people_results.sort(
+            key=lambda profile: (
+                needle not in profile.get("display_name", "").lower(),
+                profile.get("display_name", ""),
+            )
+        )
+        people_results = people_results[:8]
+
+        group_lookup = {group["id"]: group for group in COMMUNITY_GROUPS}
+        for group in COMMUNITY_GROUPS:
+            haystack = " ".join(
+                [
+                    str(group.get("name", "")),
+                    str(group.get("description", "")),
+                    str(group.get("category", "")),
+                ]
+            ).lower()
+            if needle in haystack:
+                community_results.append(
+                    {
+                        "kind": "group",
+                        "title": group.get("name", "Community Group"),
+                        "subtitle": f"{group.get('members', 0)} members",
+                        "snippet": group.get("description", ""),
+                        "href": url_for("community_page", group=group.get("id")) + "#community-feed",
+                        "icon": group.get("icon", "🫂"),
+                    }
+                )
+
+        for post in COMMUNITY_POSTS:
+            haystack = " ".join(
+                [
+                    str(post.get("author", "")),
+                    str(post.get("content", "")),
+                ]
+            ).lower()
+            if needle in haystack:
+                group = group_lookup.get(post.get("group_id", ""), {})
+                content = str(post.get("content", ""))
+                snippet = content if len(content) <= 160 else f"{content[:157].rstrip()}..."
+                community_results.append(
+                    {
+                        "kind": "post",
+                        "title": f"{post.get('author', 'Member')} in {group.get('name', 'Community')}",
+                        "subtitle": post.get("timestamp", ""),
+                        "snippet": snippet,
+                        "href": (
+                            url_for("community_page", group=post.get("group_id", ""), post_q=query)
+                            + "#community-feed"
+                        ),
+                        "icon": "💬",
+                    }
+                )
+
+        community_results = community_results[:10]
+
+    total_results = len(movie_results) + len(people_results) + len(community_results)
+    return render_template(
+        "search.html",
+        active_page="search",
+        body_class="page-search",
+        page_id="search",
+        page_title=f"Search • {query} | Heal Hub" if query else "Search | Heal Hub",
+        query=query,
+        movie_results=movie_results,
+        people_results=people_results,
+        community_results=community_results,
+        total_results=total_results,
     )
 
 
@@ -2751,23 +3025,673 @@ USER_CONNECTIONS: dict[str, dict[str, Any]] = {
 }
 
 
+
+
+COMMUNITY_GROUP_ENHANCEMENTS: dict[str, dict[str, Any]] = {
+    "grp-001": {
+        "pace": "Gentle check-ins",
+        "session": "Tue & Sat • 7:00 PM",
+        "host": "Peer-led + clinician reviewed",
+        "focus_tags": ["grounding", "work anxiety", "breath resets"],
+    },
+    "grp-002": {
+        "pace": "Soft landing space",
+        "session": "Mon & Thu • 8:15 PM",
+        "host": "Story-guided circle",
+        "focus_tags": ["heartbreak", "grief", "starting over"],
+    },
+    "grp-003": {
+        "pace": "Empowering + private",
+        "session": "Wed • 6:30 PM",
+        "host": "Moderated women-only circle",
+        "focus_tags": ["boundaries", "confidence", "belonging"],
+    },
+    "grp-004": {
+        "pace": "Practical reset",
+        "session": "Fri • 7:45 PM",
+        "host": "Burnout recovery coach",
+        "focus_tags": ["stress relief", "rest", "work-life balance"],
+    },
+    "grp-005": {
+        "pace": "Reflective growth",
+        "session": "Sun • 10:00 AM",
+        "host": "Habit + story exchange",
+        "focus_tags": ["habits", "motivation", "small wins"],
+    },
+    "grp-006": {
+        "pace": "Open and welcoming",
+        "session": "Daily • drop-in threads",
+        "host": "Community team present",
+        "focus_tags": ["gentle support", "life updates", "safe sharing"],
+    },
+}
+
+COMMUNITY_EVENTS: list[dict[str, Any]] = [
+    {
+        "id": "evt-001",
+        "group_id": "grp-006",
+        "title": "Evening check-in circle",
+        "time_label": "Tonight • 7:30 PM",
+        "format": "Drop-in",
+        "host": "Mina R.",
+        "description": "A calm 45-minute group for anyone needing a softer landing after a long day.",
+        "capacity_note": "7 seats left",
+    },
+    {
+        "id": "evt-002",
+        "group_id": "grp-004",
+        "title": "Burnout reset workshop",
+        "time_label": "Tomorrow • 6:00 PM",
+        "format": "Guided session",
+        "host": "Riya T.",
+        "description": "Practical routines for coming down from overwork without guilt.",
+        "capacity_note": "12 seats left",
+    },
+    {
+        "id": "evt-003",
+        "group_id": "grp-003",
+        "title": "Boundaries practice room",
+        "time_label": "Thursday • 8:00 PM",
+        "format": "Role-play circle",
+        "host": "Laxmi G.",
+        "description": "Supportive scripts and gentle rehearsal for hard conversations.",
+        "capacity_note": "Private circle",
+    },
+    {
+        "id": "evt-004",
+        "group_id": "grp-005",
+        "title": "Small wins Sunday",
+        "time_label": "Sunday • 10:00 AM",
+        "format": "Community ritual",
+        "host": "Heal Hub Team",
+        "description": "Share one tiny thing that moved you forward this week.",
+        "capacity_note": "Open to all",
+    },
+]
+
+COMMUNITY_PROMPT_LIBRARY: list[dict[str, str]] = [
+    {
+        "label": "Ask for support",
+        "kind": "help",
+        "mood": "anxious",
+        "text": "I'm carrying something heavy today and could really use a few gentle ideas or kind words about...",
+    },
+    {
+        "label": "Share a win",
+        "kind": "win",
+        "mood": "hopeful",
+        "text": "A small win I'm proud of today is...",
+    },
+    {
+        "label": "Reflect honestly",
+        "kind": "discussion",
+        "mood": "steady",
+        "text": "Something I noticed about myself lately is...",
+    },
+    {
+        "label": "Offer a resource",
+        "kind": "resource",
+        "mood": "grateful",
+        "text": "Something that supported me recently and might help someone else here is...",
+    },
+]
+
+COMMUNITY_GUIDELINES: list[dict[str, str]] = [
+    {
+        "title": "Lead with empathy",
+        "detail": "Respond to the feeling first, then offer one gentle suggestion if it is welcome.",
+    },
+    {
+        "title": "Protect privacy",
+        "detail": "Keep identifying details light. Use anonymous posting whenever that feels safer.",
+    },
+    {
+        "title": "Support over fixing",
+        "detail": "This space values reflection, validation, and care more than pressure or judgment.",
+    },
+]
+
+COMMUNITY_POST_KIND_OPTIONS: list[dict[str, str]] = [
+    {"id": "discussion", "label": "Discussion"},
+    {"id": "help", "label": "Ask for help"},
+    {"id": "win", "label": "Small win"},
+    {"id": "event", "label": "Event"},
+    {"id": "resource", "label": "Helpful resource"},
+]
+
+COMMUNITY_MOOD_OPTIONS: list[dict[str, str]] = [
+    {"id": "steady", "label": "Steady"},
+    {"id": "hopeful", "label": "Hopeful"},
+    {"id": "anxious", "label": "Anxious"},
+    {"id": "overwhelmed", "label": "Overwhelmed"},
+    {"id": "grateful", "label": "Grateful"},
+]
+
+COMMUNITY_REACTION_OPTIONS: list[dict[str, str]] = [
+    {"id": "support", "emoji": "💙", "label": "Support"},
+    {"id": "relate", "emoji": "🤝", "label": "Relate"},
+    {"id": "celebrate", "emoji": "🌟", "label": "Celebrate"},
+    {"id": "insight", "emoji": "💡", "label": "Insight"},
+]
+
+
+def community_group_index() -> dict[str, dict[str, Any]]:
+    return {group["id"]: group for group in COMMUNITY_GROUPS}
+
+
+def normalize_community_kind(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    aliases = {
+        "reflection": "discussion",
+        "reflect": "discussion",
+        "question": "help",
+        "ask": "help",
+        "ask_for_help": "help",
+        "support": "help",
+    }
+    raw = aliases.get(raw, raw)
+    allowed = {"discussion", "help", "win", "event", "resource"}
+    return raw if raw in allowed else "discussion"
+
+
+def community_kind_label(kind: str) -> str:
+    return {
+        "discussion": "Discussion",
+        "help": "Ask for help",
+        "win": "Small win",
+        "event": "Event",
+        "resource": "Helpful resource",
+    }.get(kind, "Discussion")
+
+
+def normalize_community_mood(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    allowed = {"steady", "hopeful", "anxious", "overwhelmed", "grateful"}
+    return raw if raw in allowed else "steady"
+
+
+def community_mood_label(mood: str) -> str:
+    return {
+        "steady": "Steady",
+        "hopeful": "Hopeful",
+        "anxious": "Anxious",
+        "overwhelmed": "Overwhelmed",
+        "grateful": "Grateful",
+    }.get(mood, "Steady")
+
+
+def parse_demo_timestamp(value: Any) -> datetime:
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d %H:%M")
+    except (TypeError, ValueError):
+        return datetime(2026, 3, 1, 9, 0)
+
+
+def community_author_badge(author: str) -> str:
+    clean_author = str(author or "").strip()
+    for profile in PATIENT_PROFILES.values():
+        if profile.get("display_name") == clean_author:
+            return profile.get("avatar", "💬")
+    if clean_author.lower().startswith("anonymous"):
+        return "🌙"
+    return "💬"
+
+
+def infer_post_author_username(post: dict[str, Any]) -> str:
+    explicit = str(post.get("author_username", "")).strip()
+    if explicit:
+        return explicit
+    author = str(post.get("author", "")).strip().lower()
+    for username, profile in PATIENT_PROFILES.items():
+        if profile.get("display_name", "").strip().lower() == author:
+            return username
+    if author and not author.startswith("anonymous"):
+        slug = "".join(char if char.isalnum() else "-" for char in author).strip("-")
+        if slug:
+            return f"name:{slug}"
+    return ""
+
+
+def infer_community_post_tags(content: str, group_id: str, kind: str, mood: str) -> list[str]:
+    content_lower = content.lower()
+    group = community_group_index().get(group_id, {})
+    tags = [str(group.get("category", "support")).strip()]
+
+    if kind == "help" or "?" in content:
+        tags.insert(0, "asking for support")
+    if kind == "discussion":
+        tags.insert(0, "open discussion")
+    if kind == "win" or any(word in content_lower for word in ["win", "proud", "lighter", "progress", "boundary"]):
+        tags.insert(0, "small win")
+    if kind == "event":
+        tags.insert(0, "event invite")
+    if kind == "resource":
+        tags.insert(0, "helpful resource")
+
+    if mood in {"anxious", "overwhelmed"}:
+        tags.append("gentle replies")
+    if mood in {"hopeful", "grateful"}:
+        tags.append("hopeful energy")
+    if any(word in content_lower for word in ["meeting", "work", "office", "burnout", "job"]):
+        tags.append("work life")
+    if any(word in content_lower for word in ["boundary", "boundaries"]):
+        tags.append("boundaries")
+    if any(word in content_lower for word in ["grief", "loss", "breakup", "heartbreak"]):
+        tags.append("grief care")
+    if any(word in content_lower for word in ["routine", "habit", "meditation", "journal", "walk"]):
+        tags.append("daily rituals")
+
+    return dedupe_preserving_order([tag for tag in tags if tag])[:4]
+
+
+def ensure_community_post_shape(post: dict[str, Any]) -> dict[str, Any]:
+    post["kind"] = normalize_community_kind(post.get("kind"))
+    post["mood"] = normalize_community_mood(post.get("mood"))
+    post["anonymous"] = as_bool(post.get("anonymous", False))
+
+    try:
+        likes = int(post.get("likes", 0) or 0)
+    except (TypeError, ValueError):
+        likes = 0
+
+    reactions = post.get("reactions") if isinstance(post.get("reactions"), dict) else {}
+    normalized_reactions = {
+        "support": likes,
+        "relate": 0,
+        "celebrate": 0,
+        "insight": 0,
+    }
+    for key in normalized_reactions:
+        try:
+            normalized_reactions[key] = int(reactions.get(key, normalized_reactions[key]) or 0)
+        except (TypeError, ValueError):
+            normalized_reactions[key] = normalized_reactions[key]
+    if normalized_reactions["support"] < likes:
+        normalized_reactions["support"] = likes
+
+    post["reactions"] = normalized_reactions
+    post["likes"] = normalized_reactions["support"]
+
+    try:
+        post["bookmarks"] = int(post.get("bookmarks", 0) or 0)
+    except (TypeError, ValueError):
+        post["bookmarks"] = 0
+
+    post["author_username"] = infer_post_author_username(post)
+    if not post.get("author"):
+        post["author"] = "Anonymous member" if post["anonymous"] else "Heal Hub Member"
+
+    tag_values = [str(item).strip() for item in post.get("tags", []) if str(item).strip()]
+    post["tags"] = tag_values or infer_community_post_tags(
+        str(post.get("content", "")),
+        str(post.get("group_id", "")),
+        post["kind"],
+        post["mood"],
+    )
+
+    replies = post.setdefault("replies", [])
+    for reply in replies:
+        reply["avatar"] = community_author_badge(reply.get("author", ""))
+    return post
+
+
+def serialize_community_post(post: dict[str, Any]) -> dict[str, Any]:
+    normalized = copy.deepcopy(ensure_community_post_shape(post))
+    normalized["reaction_total"] = sum(int(value) for value in normalized.get("reactions", {}).values())
+    normalized["reply_count"] = len(normalized.get("replies", []))
+    normalized["kind_label"] = community_kind_label(normalized["kind"])
+    normalized["mood_label"] = community_mood_label(normalized["mood"])
+    normalized["author_badge"] = community_author_badge(normalized.get("author", ""))
+    normalized["group"] = community_group_index().get(normalized.get("group_id", ""), {})
+    normalized["care_note"] = (
+        "This post is asking for support. Begin with validation, then offer one gentle idea."
+        if normalized["kind"] == "help"
+        else "Celebrate the progress before adding advice."
+        if normalized["kind"] == "win"
+        else "Confirm timing, tone, and practical details so people can join with confidence."
+        if normalized["kind"] == "event"
+        else "Reflect what feels true or useful before trying to solve anything."
+    )
+    return normalized
+
+
+def default_community_profile() -> dict[str, Any]:
+    return {
+        "joined_groups": [],
+        "posts_count": 0,
+        "support_given": 0,
+        "support_received": 0,
+        "comfort_topics": [],
+        "saved_posts_count": 0,
+        "muted_users": [],
+    }
+
+
+def build_community_group_cards(username: str = "", selected_group_id: str = "") -> list[dict[str, Any]]:
+    user_profile = PATIENT_PROFILES.get(username, {})
+    community_state = USER_COMMUNITY_DATA.get(username, default_community_profile())
+    joined_ids = set(community_state.get("joined_groups", []))
+    comfort_topics = [str(item).strip().lower() for item in community_state.get("comfort_topics", []) if str(item).strip()]
+    user_interests = [str(item).strip().lower() for item in user_profile.get("interests", []) if str(item).strip()]
+
+    cards: list[dict[str, Any]] = []
+    for base_group in COMMUNITY_GROUPS:
+        group = copy.deepcopy(base_group)
+        enhancements = COMMUNITY_GROUP_ENHANCEMENTS.get(group["id"], {})
+        group.update(enhancements)
+        focus_tags = [str(item).strip() for item in enhancements.get("focus_tags", []) if str(item).strip()]
+        group["focus_tags"] = focus_tags or [group.get("category", "support")]
+        group["is_joined"] = group["id"] in joined_ids
+
+        score = 0
+        if group["is_joined"]:
+            score += 36
+        if selected_group_id and selected_group_id == group["id"]:
+            score += 8
+        if group.get("category", "").lower() in user_interests:
+            score += 20
+        haystack = " ".join(group["focus_tags"]).lower() + " " + group.get("description", "").lower()
+        for topic in comfort_topics:
+            if topic and topic in haystack:
+                score += 8
+        group["match_score"] = score
+        group["match_label"] = "Already in your map" if group["is_joined"] else "Great match" if score >= 24 else "Worth exploring"
+        group["match_reason"] = (
+            "You already belong here, so you can jump straight into the current conversation."
+            if group["is_joined"]
+            else "This circle overlaps with your interests or comfort topics."
+            if score >= 24
+            else "A thoughtful space if you want to branch into something new."
+        )
+        cards.append(group)
+
+    cards.sort(key=lambda item: (not item.get("is_joined", False), -item.get("match_score", 0), -item.get("members", 0)))
+    return cards
+
+
+def build_community_events(selected_group_id: str = "") -> list[dict[str, Any]]:
+    group_lookup = community_group_index()
+    events: list[dict[str, Any]] = []
+    for raw_event in COMMUNITY_EVENTS:
+        event = copy.deepcopy(raw_event)
+        event["group"] = group_lookup.get(event.get("group_id", ""), {})
+        event["is_selected_group"] = bool(selected_group_id and selected_group_id == event.get("group_id"))
+        events.append(event)
+    events.sort(key=lambda item: (not item.get("is_selected_group", False), item.get("time_label", ""), item.get("title", "")))
+    return events
+
+
+def build_people_discovery(
+    username: str,
+    my_connections: dict[str, Any],
+    people_q: str = "",
+    people_interest: str = "",
+    selected_group_id: str = "",
+) -> tuple[list[dict[str, Any]], list[str], list[dict[str, Any]], list[dict[str, Any]]]:
+    current_profile = PATIENT_PROFILES.get(username, {})
+    current_interests = {str(item).strip().lower() for item in current_profile.get("interests", []) if str(item).strip()}
+    current_groups = set(current_profile.get("joined_communities", []))
+    current_location = str(current_profile.get("location", "")).strip().lower()
+
+    raw_people: list[dict[str, Any]] = []
+    interest_options: set[str] = set()
+    for profile_username, profile in PATIENT_PROFILES.items():
+        if profile_username == username:
+            continue
+        if profile_username in my_connections.get("blocked", []):
+            continue
+
+        person = copy.deepcopy(profile)
+        if profile_username in my_connections.get("friends", []):
+            relationship_status = "connected"
+        elif profile_username in my_connections.get("requests_sent", []):
+            relationship_status = "request_sent"
+        elif profile_username in my_connections.get("requests_received", []):
+            relationship_status = "request_received"
+        else:
+            relationship_status = "discover"
+
+        person_interests = [str(item).strip() for item in person.get("interests", []) if str(item).strip()]
+        shared_interests = [item for item in person_interests if item.lower() in current_interests]
+        shared_group_ids = current_groups.intersection(person.get("joined_communities", []))
+        shared_groups = [group["name"] for group in COMMUNITY_GROUPS if group["id"] in shared_group_ids]
+        same_location = current_location and current_location == str(person.get("location", "")).strip().lower()
+
+        match_score = len(shared_groups) * 18 + len(shared_interests) * 10 + (6 if same_location else 0)
+        if selected_group_id and selected_group_id in person.get("joined_communities", []):
+            match_score += 10
+
+        person["relationship_status"] = relationship_status
+        person["shared_interests"] = shared_interests[:3]
+        person["shared_groups"] = shared_groups[:2]
+        person["match_score"] = match_score
+        person["match_reason"] = (
+            f"{len(shared_groups)} shared circles and {len(shared_interests)} shared interests."
+            if shared_groups or shared_interests
+            else "A fresh connection outside your current circles."
+        )
+        person["same_location"] = same_location
+
+        interest_options.update(item.lower() for item in person_interests)
+        raw_people.append(person)
+
+    recommended_people = sorted(
+        raw_people,
+        key=lambda person: (
+            person.get("relationship_status") not in {"request_received", "connected"},
+            -person.get("match_score", 0),
+            person.get("display_name", ""),
+        ),
+    )[:3]
+    request_cards = [person for person in recommended_people if person.get("relationship_status") == "request_received"]
+    if not request_cards:
+        request_cards = [person for person in raw_people if person.get("relationship_status") == "request_received"][:3]
+
+    filtered_people = raw_people
+    if people_q:
+        filtered_people = [
+            person for person in filtered_people
+            if people_q in person.get("display_name", "").lower()
+            or people_q in person.get("bio", "").lower()
+            or people_q in person.get("location", "").lower()
+            or people_q in " ".join(person.get("interests", [])).lower()
+        ]
+
+    if people_interest:
+        filtered_people = [
+            person for person in filtered_people
+            if people_interest in [item.lower() for item in person.get("interests", [])]
+        ]
+
+    relationship_rank = {"request_received": 0, "connected": 1, "discover": 2, "request_sent": 3}
+    filtered_people = sorted(
+        filtered_people,
+        key=lambda person: (
+            relationship_rank.get(person.get("relationship_status", "discover"), 4),
+            -person.get("match_score", 0),
+            person.get("display_name", ""),
+        ),
+    )
+    return filtered_people, sorted(interest_options), recommended_people, request_cards
+
+
+def build_filtered_community_posts(
+    group_id: str = "",
+    feed_filter: str = "all",
+    sort_by: str = "recent",
+    post_q: str = "",
+    joined_ids: set[str] | None = None,
+    muted_author_usernames: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    joined_ids = joined_ids or set()
+    muted_author_usernames = muted_author_usernames or set()
+    posts = [serialize_community_post(post) for post in COMMUNITY_POSTS]
+
+    if muted_author_usernames:
+        posts = [
+            post for post in posts
+            if str(post.get("author_username", "")).strip() not in muted_author_usernames
+        ]
+
+    if group_id:
+        posts = [post for post in posts if post.get("group_id") == group_id]
+
+    if feed_filter == "joined":
+        posts = [post for post in posts if post.get("group_id") in joined_ids]
+    elif feed_filter == "questions":
+        posts = [post for post in posts if post.get("kind") in {"help", "question"} or "?" in post.get("content", "")]
+    elif feed_filter == "wins":
+        posts = [post for post in posts if post.get("kind") == "win"]
+    elif feed_filter == "events":
+        posts = [post for post in posts if post.get("kind") == "event"]
+    elif feed_filter == "trending":
+        posts = [post for post in posts if post.get("reaction_total", 0) >= 40 or post.get("reply_count", 0) >= 2]
+    elif feed_filter == "saved":
+        posts = [post for post in posts if post.get("bookmarks", 0) > 0]
+
+    if post_q:
+        needle = post_q.lower()
+        posts = [
+            post for post in posts
+            if needle in post.get("content", "").lower()
+            or needle in post.get("author", "").lower()
+            or needle in " ".join(post.get("tags", [])).lower()
+            or needle in str((post.get("group") or {}).get("name", "")).lower()
+        ]
+
+    if sort_by == "supported":
+        posts.sort(
+            key=lambda post: (post.get("reaction_total", 0), post.get("likes", 0), parse_demo_timestamp(post.get("timestamp"))),
+            reverse=True,
+        )
+    elif sort_by == "discussed":
+        posts.sort(
+            key=lambda post: (post.get("reply_count", 0), post.get("reaction_total", 0), parse_demo_timestamp(post.get("timestamp"))),
+            reverse=True,
+        )
+    elif sort_by == "saved":
+        posts.sort(
+            key=lambda post: (post.get("bookmarks", 0), post.get("reaction_total", 0), parse_demo_timestamp(post.get("timestamp"))),
+            reverse=True,
+        )
+    else:
+        posts.sort(key=lambda post: parse_demo_timestamp(post.get("timestamp")), reverse=True)
+
+    return posts
+
+
+
 @app.get("/community")
 def community_page() -> str:
     group_id = request.args.get("group", "").strip()
+    people_q = request.args.get("people_q", "").strip().lower()
+    people_interest = request.args.get("people_interest", "").strip().lower()
+    feed_filter = request.args.get("feed", "all").strip().lower() or "all"
+    sort_by = request.args.get("sort", "recent").strip().lower() or "recent"
+    post_q = request.args.get("post_q", "").strip()
+
+    valid_feed_filters = {"all", "joined", "questions", "wins", "events", "trending", "saved"}
+    valid_sort_options = {"recent", "supported", "discussed", "saved"}
+    if feed_filter not in valid_feed_filters:
+        feed_filter = "all"
+    if sort_by not in valid_sort_options:
+        sort_by = "recent"
+
     user = session.get("user")
     user_community = {}
     community_profile = None
+    people_results: list[dict[str, Any]] = []
+    people_interest_options: list[str] = []
+    my_connections = {"friends": [], "requests_sent": [], "requests_received": [], "blocked": []}
+    recommended_people: list[dict[str, Any]] = []
+    request_cards: list[dict[str, Any]] = []
+    joined_ids: set[str] = set()
+    muted_author_usernames: set[str] = set()
+
+    username = ""
     if user:
         username = user.get("username", "")
-        user_community = USER_COMMUNITY_DATA.get(username, {})
+        user_community = USER_COMMUNITY_DATA.get(username, default_community_profile())
         community_profile = build_community_profile(username)
+        my_connections = USER_CONNECTIONS.get(username, my_connections)
+        joined_ids = set((community_profile or {}).get("profile", {}).get("joined_groups", []))
+        muted_author_usernames = {
+            str(item).strip()
+            for item in (community_profile or {}).get("profile", {}).get("muted_users", [])
+            if str(item).strip()
+        }
+        people_results, people_interest_options, recommended_people, request_cards = build_people_discovery(
+            username,
+            my_connections,
+            people_q=people_q,
+            people_interest=people_interest,
+            selected_group_id=group_id,
+        )
 
-    if group_id:
-        group = next((g for g in COMMUNITY_GROUPS if g["id"] == group_id), None)
-        posts = [p for p in COMMUNITY_POSTS if p["group_id"] == group_id]
-    else:
-        group = None
-        posts = COMMUNITY_POSTS[:6]
+    group_cards = build_community_group_cards(username=username, selected_group_id=group_id)
+    group_lookup = {group["id"]: group for group in group_cards}
+    selected_group = group_lookup.get(group_id)
+
+    posts = build_filtered_community_posts(
+        group_id=group_id,
+        feed_filter=feed_filter,
+        sort_by=sort_by,
+        post_q=post_q,
+        joined_ids=joined_ids,
+        muted_author_usernames=muted_author_usernames,
+    )
+
+    def community_href(**kwargs: Any) -> str:
+        params: dict[str, Any] = {}
+        for key, value in kwargs.items():
+            if value not in {None, ""}:
+                params[key] = value
+        return url_for("community_page", **params)
+
+    feed_filters = [
+        {
+            "id": "all",
+            "label": "All conversations",
+            "active": feed_filter == "all",
+            "href": community_href(group=group_id, feed="all", sort=sort_by, post_q=post_q) + "#community-feed",
+        },
+        {
+            "id": "joined",
+            "label": "My circles",
+            "active": feed_filter == "joined",
+            "href": community_href(group=group_id, feed="joined", sort=sort_by, post_q=post_q) + "#community-feed",
+        },
+        {
+            "id": "questions",
+            "label": "Support asks",
+            "active": feed_filter == "questions",
+            "href": community_href(group=group_id, feed="questions", sort=sort_by, post_q=post_q) + "#community-feed",
+        },
+        {
+            "id": "wins",
+            "label": "Small wins",
+            "active": feed_filter == "wins",
+            "href": community_href(group=group_id, feed="wins", sort=sort_by, post_q=post_q) + "#community-feed",
+        },
+        {
+            "id": "events",
+            "label": "Events",
+            "active": feed_filter == "events",
+            "href": community_href(group=group_id, feed="events", sort=sort_by, post_q=post_q) + "#community-feed",
+        },
+        {
+            "id": "trending",
+            "label": "Trending",
+            "active": feed_filter == "trending",
+            "href": community_href(group=group_id, feed="trending", sort=sort_by, post_q=post_q) + "#community-feed",
+        },
+        {
+            "id": "saved",
+            "label": "Saved",
+            "active": feed_filter == "saved",
+            "href": community_href(group=group_id, feed="saved", sort=sort_by, post_q=post_q) + "#community-feed",
+        },
+    ]
 
     return render_template(
         "community.html",
@@ -2776,20 +3700,48 @@ def community_page() -> str:
         page_id="community",
         page_title="Community Support | Heal Hub",
         groups=COMMUNITY_GROUPS,
-        selected_group=group,
+        group_cards=group_cards,
+        group_lookup=group_lookup,
+        selected_group=selected_group,
         posts=posts,
         user_community=user_community,
         community_profile=community_profile,
+        people_results=people_results,
+        people_q=people_q,
+        people_interest=people_interest,
+        people_interest_options=people_interest_options,
+        my_connections=my_connections,
+        recommended_people=recommended_people,
+        request_cards=request_cards,
+        upcoming_events=build_community_events(group_id),
+        community_guidelines=COMMUNITY_GUIDELINES,
+        community_prompts=COMMUNITY_PROMPT_LIBRARY,
+        community_post_kind_options=COMMUNITY_POST_KIND_OPTIONS,
+        community_mood_options=COMMUNITY_MOOD_OPTIONS,
+        community_reaction_options=COMMUNITY_REACTION_OPTIONS,
+        feed_filters=feed_filters,
+        feed_filter=feed_filter,
+        sort_by=sort_by,
+        post_q=post_q,
     )
+
 
 
 @app.post("/api/community-post")
 @login_required
 def community_post() -> Any:
     user = session.get("user", {})
+    username = user.get("username", "patient")
     payload = request.get_json(silent=True) or {}
-    group_id = payload.get("group_id", "grp-006")
-    content = payload.get("content", "").strip()
+    group_id = str(payload.get("group_id", "grp-006")).strip() or "grp-006"
+    if group_id not in community_group_index():
+        group_id = "grp-006"
+
+    content = str(payload.get("content", "")).strip()
+    post_kind = normalize_community_kind(payload.get("post_kind"))
+    mood = normalize_community_mood(payload.get("mood"))
+    anonymous = as_bool(payload.get("anonymous", False))
+    prompt_label = str(payload.get("prompt_label", "")).strip()
 
     if not content:
         return jsonify({"success": False, "message": "Post content cannot be empty."}), 400
@@ -2797,30 +3749,43 @@ def community_post() -> Any:
     post = {
         "id": f"post-{uuid4().hex[:8]}",
         "group_id": group_id,
-        "author": user.get("display_name", "Anonymous"),
+        "author": "Anonymous member" if anonymous else user.get("display_name", "Anonymous"),
+        "author_username": "" if anonymous else username,
         "content": content,
         "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
         "likes": 0,
         "replies": [],
+        "kind": post_kind,
+        "mood": mood,
+        "anonymous": anonymous,
+        "reactions": {"support": 0, "relate": 0, "celebrate": 0, "insight": 0},
+        "bookmarks": 0,
+        "tags": infer_community_post_tags(content, group_id, post_kind, mood),
     }
-    COMMUNITY_POSTS.insert(0, post)
-    community = USER_COMMUNITY_DATA.setdefault(
-        user.get("username", "patient"),
-        {"joined_groups": [], "posts_count": 0, "support_given": 0, "support_received": 0, "comfort_topics": []},
-    )
+    if prompt_label:
+        post["tags"] = dedupe_preserving_order([prompt_label] + post["tags"])[:4]
+
+    COMMUNITY_POSTS.insert(0, ensure_community_post_shape(post))
+    community = USER_COMMUNITY_DATA.setdefault(username, default_community_profile())
     community["posts_count"] = community.get("posts_count", 0) + 1
     if group_id not in community.get("joined_groups", []):
         community.setdefault("joined_groups", []).append(group_id)
-    return jsonify({"success": True, "post": post})
+
+    if username in PATIENT_PROFILES and group_id not in PATIENT_PROFILES[username].get("joined_communities", []):
+        PATIENT_PROFILES[username].setdefault("joined_communities", []).append(group_id)
+
+    return jsonify({"success": True, "post": serialize_community_post(post)})
+
 
 
 @app.post("/api/community-reply")
 @login_required
 def community_reply() -> Any:
     user = session.get("user", {})
+    username = user.get("username", "patient")
     payload = request.get_json(silent=True) or {}
     post_id = payload.get("post_id", "")
-    content = payload.get("content", "").strip()
+    content = str(payload.get("content", "")).strip()
 
     if not content:
         return jsonify({"success": False, "message": "Reply cannot be empty."}), 400
@@ -2829,26 +3794,145 @@ def community_reply() -> Any:
     if not post:
         return jsonify({"success": False, "message": "Post not found."}), 404
 
+    ensure_community_post_shape(post)
     reply = {
         "author": user.get("display_name", "Anonymous"),
         "content": content,
         "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        "avatar": community_author_badge(user.get("display_name", "")),
     }
     post["replies"].append(reply)
-    return jsonify({"success": True, "reply": reply})
+
+    replier_state = USER_COMMUNITY_DATA.setdefault(username, default_community_profile())
+    replier_state["support_given"] = replier_state.get("support_given", 0) + 1
+
+    author_username = infer_post_author_username(post)
+    if author_username and author_username != username:
+        author_state = USER_COMMUNITY_DATA.setdefault(author_username, default_community_profile())
+        author_state["support_received"] = author_state.get("support_received", 0) + 1
+
+    return jsonify({
+        "success": True,
+        "reply": reply,
+        "reply_count": len(post.get("replies", [])),
+    })
+
 
 
 @app.post("/api/community-react")
 @login_required
 def community_react() -> Any:
+    user = session.get("user", {})
+    username = user.get("username", "patient")
     payload = request.get_json(silent=True) or {}
     post_id = payload.get("post_id", "")
+    reaction_type = str(payload.get("reaction_type", "support")).strip().lower() or "support"
+    if reaction_type not in {item["id"] for item in COMMUNITY_REACTION_OPTIONS}:
+        reaction_type = "support"
+
     post = next((item for item in COMMUNITY_POSTS if item["id"] == post_id), None)
     if not post:
         return jsonify({"success": False, "message": "Post not found."}), 404
 
-    post["likes"] = post.get("likes", 0) + 1
-    return jsonify({"success": True, "likes": post["likes"]})
+    ensure_community_post_shape(post)
+    post["reactions"][reaction_type] = post["reactions"].get(reaction_type, 0) + 1
+    post["likes"] = post["reactions"]["support"]
+
+    giver_state = USER_COMMUNITY_DATA.setdefault(username, default_community_profile())
+    giver_state["support_given"] = giver_state.get("support_given", 0) + 1
+
+    author_username = infer_post_author_username(post)
+    if author_username and author_username != username:
+        receiver_state = USER_COMMUNITY_DATA.setdefault(author_username, default_community_profile())
+        receiver_state["support_received"] = receiver_state.get("support_received", 0) + 1
+
+    return jsonify({
+        "success": True,
+        "reaction_type": reaction_type,
+        "reactions": post["reactions"],
+        "reaction_total": sum(post["reactions"].values()),
+        "likes": post["likes"],
+    })
+
+
+
+@app.post("/api/community-bookmark")
+@login_required
+def community_bookmark() -> Any:
+    user = session.get("user", {})
+    username = user.get("username", "patient")
+    payload = request.get_json(silent=True) or {}
+    post_id = payload.get("post_id", "")
+
+    post = next((item for item in COMMUNITY_POSTS if item["id"] == post_id), None)
+    if not post:
+        return jsonify({"success": False, "message": "Post not found."}), 404
+
+    ensure_community_post_shape(post)
+    post["bookmarks"] = post.get("bookmarks", 0) + 1
+
+    saver_state = USER_COMMUNITY_DATA.setdefault(username, default_community_profile())
+    saver_state["saved_posts_count"] = saver_state.get("saved_posts_count", 0) + 1
+
+    return jsonify({
+        "success": True,
+        "bookmarks": post["bookmarks"],
+    })
+
+
+
+COMMUNITY_REPORTS: list[dict[str, Any]] = []
+
+
+@app.post("/api/community-report")
+@login_required
+def community_report() -> Any:
+    user = session.get("user", {})
+    username = user.get("username", "patient")
+    payload = request.get_json(silent=True) or {}
+    post_id = str(payload.get("post_id", "")).strip()
+    reason = str(payload.get("reason", "Needs moderator review")).strip() or "Needs moderator review"
+
+    post = next((item for item in COMMUNITY_POSTS if item["id"] == post_id), None)
+    if not post:
+        return jsonify({"success": False, "message": "Post not found."}), 404
+
+    COMMUNITY_REPORTS.append({
+        "id": f"report-{uuid4().hex[:8]}",
+        "post_id": post_id,
+        "reported_by": username,
+        "reason": reason[:120],
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+    })
+    return jsonify({"success": True, "message": "Thanks. This post was sent to moderation review."})
+
+
+@app.post("/api/community-mute")
+@login_required
+def community_mute() -> Any:
+    user = session.get("user", {})
+    username = user.get("username", "patient")
+    payload = request.get_json(silent=True) or {}
+    author_username = str(payload.get("author_username", "")).strip()
+    if not author_username:
+        return jsonify({"success": False, "message": "Author not provided."}), 400
+    if author_username == username:
+        return jsonify({"success": False, "message": "You cannot mute yourself."}), 400
+
+    community = USER_COMMUNITY_DATA.setdefault(username, default_community_profile())
+    muted_users = community.setdefault("muted_users", [])
+    if author_username not in muted_users:
+        muted_users.append(author_username)
+
+    connection_state = USER_CONNECTIONS.setdefault(
+        username,
+        {"friends": [], "requests_sent": [], "requests_received": [], "blocked": []},
+    )
+    blocked = connection_state.setdefault("blocked", [])
+    if author_username not in blocked:
+        blocked.append(author_username)
+
+    return jsonify({"success": True, "message": "Author muted. You will not see their posts in community feed."})
 
 
 @app.post("/api/join-community")
@@ -2857,84 +3941,41 @@ def join_community() -> Any:
     user = session.get("user", {})
     username = user.get("username", "patient")
     payload = request.get_json(silent=True) or {}
-    group_id = payload.get("group_id", "")
+    group_id = str(payload.get("group_id", "")).strip()
+    group = next((g for g in COMMUNITY_GROUPS if g["id"] == group_id), None)
+    if not group:
+        return jsonify({"success": False, "message": "Group not found."}), 404
 
+    joined_for_profile = False
     if username in PATIENT_PROFILES:
         profile = PATIENT_PROFILES[username]
         if group_id not in profile.get("joined_communities", []):
             profile.setdefault("joined_communities", []).append(group_id)
+            joined_for_profile = True
 
-    community = USER_COMMUNITY_DATA.setdefault(
-        username,
-        {"joined_groups": [], "posts_count": 0, "support_given": 0, "support_received": 0, "comfort_topics": []},
-    )
+    community = USER_COMMUNITY_DATA.setdefault(username, default_community_profile())
     if group_id not in community.get("joined_groups", []):
         community.setdefault("joined_groups", []).append(group_id)
+        joined_for_profile = True
 
-    group = next((g for g in COMMUNITY_GROUPS if g["id"] == group_id), None)
+    if joined_for_profile:
+        group["members"] = int(group.get("members", 0)) + 1
+
     return jsonify({
         "success": True,
-        "message": f"You've joined {group['name'] if group else 'the community'}!",
+        "message": f"You've joined {group['name']}!",
         "group": group,
+        "joined_groups_count": len(community.get("joined_groups", [])),
     })
 
 
 @app.get("/patients")
 @login_required
 def browse_patients() -> str:
-    """Browse and discover other patients in the community."""
-    current_user = session.get("user", {})
-    current_username = current_user.get("username", "patient")
-
-    all_patients = [
-        profile for username, profile in PATIENT_PROFILES.items()
-        if username != current_username
-    ]
-
-    my_connections = USER_CONNECTIONS.get(current_username, {
-        "friends": [],
-        "requests_sent": [],
-        "requests_received": [],
-        "blocked": [],
-    })
-
-    for patient in all_patients:
-        patient_username = patient.get("username")
-        if patient_username in my_connections.get("friends", []):
-            patient["connection_status"] = "Connected"
-        elif patient_username in my_connections.get("requests_sent", []):
-            patient["connection_status"] = "Request Sent"
-        elif patient_username in my_connections.get("requests_received", []):
-            patient["connection_status"] = "Request Received"
-
-    search_q = request.args.get("q", "").strip().lower()
-    interest = request.args.get("interest", "").strip().lower()
-
-    if search_q:
-        all_patients = [
-            p for p in all_patients
-            if search_q in p.get("display_name", "").lower() or
-               search_q in p.get("bio", "").lower()
-        ]
-
-    if interest:
-        all_patients = [
-            p for p in all_patients
-            if interest in [i.lower() for i in p.get("interests", [])]
-        ]
-
-    return render_template(
-        "patients_directory.html",
-        active_page="patients",
-        body_class="page-patients",
-        page_id="patients-directory",
-        page_title="Patient Directory | Heal Hub",
-        patients=all_patients,
-        current_user=current_user,
-        search_q=search_q,
-        selected_interest=interest,
-        my_connections=my_connections,
-    )
+    """People discovery is merged into the community page."""
+    search_q = request.args.get("q", "").strip()
+    interest = request.args.get("interest", "").strip()
+    return redirect(url_for("community_page", people_q=search_q, people_interest=interest) + "#community-people")
 
 
 @app.get("/patient/<username>")
@@ -3049,7 +4090,16 @@ def accept_connection() -> Any:
     current_user = session.get("user", {})
     current_username = current_user.get("username", "patient")
     payload = request.get_json(silent=True) or {}
-    from_username = payload.get("from_username", "")
+    from_username = str(payload.get("from_username", "")).strip()
+
+    if not from_username:
+        return jsonify({"success": False, "message": "Missing user to accept."}), 400
+
+    if from_username == current_username:
+        return jsonify({"success": False, "message": "Cannot accept yourself."}), 400
+
+    if from_username not in PATIENT_PROFILES:
+        return jsonify({"success": False, "message": "User not found."}), 404
 
     my_connections = USER_CONNECTIONS.setdefault(current_username, {
         "friends": [],
@@ -3064,8 +4114,10 @@ def accept_connection() -> Any:
         "blocked": [],
     })
 
-    if from_username in my_connections.get("requests_received", []):
-        my_connections["requests_received"].remove(from_username)
+    if from_username not in my_connections.get("requests_received", []):
+        return jsonify({"success": False, "message": "No pending request from this user."}), 400
+
+    my_connections["requests_received"].remove(from_username)
     if current_username in from_connections.get("requests_sent", []):
         from_connections["requests_sent"].remove(current_username)
 
@@ -3279,6 +4331,18 @@ def ensure_user_movie_profile(username: str) -> dict[str, Any]:
     profile.setdefault("interests", [])
     profile.setdefault("history", [])
     profile.setdefault("check_in", "Looking for stories that feel steady, hopeful, and kind.")
+
+    valid_ids = {movie["id"] for movie in MOVIES_DATA}
+    for key in ("watched", "want_to_watch", "favorites"):
+        profile[key] = [movie_id for movie_id in profile.get(key, []) if movie_id in valid_ids]
+
+    profile["history"] = [
+        item for item in profile.get("history", [])
+        if str(item.get("movie_id", "")) in valid_ids
+    ]
+
+    if not profile.get("interests"):
+        profile["interests"] = MOVIE_CATEGORIES[:4]
     return profile
 
 
@@ -3397,20 +4461,36 @@ def build_movie_profile(username: str) -> dict[str, Any]:
     }
 
 
+
 def build_community_profile(username: str) -> dict[str, Any]:
-    profile = USER_COMMUNITY_DATA.setdefault(
-        username,
-        {"joined_groups": [], "posts_count": 0, "support_given": 0, "support_received": 0, "comfort_topics": []},
-    )
+    profile = USER_COMMUNITY_DATA.setdefault(username, default_community_profile())
     joined_ids = set(profile.get("joined_groups", []))
-    joined_groups = [group for group in COMMUNITY_GROUPS if group["id"] in joined_ids]
+    joined_groups = [group for group in build_community_group_cards(username) if group["id"] in joined_ids]
+    recommended_groups = [group for group in build_community_group_cards(username) if group["id"] not in joined_ids][:3]
     recent_discussions = [
-        post for post in COMMUNITY_POSTS if not joined_ids or post["group_id"] in joined_ids
+        serialize_community_post(post)
+        for post in COMMUNITY_POSTS
+        if not joined_ids or post.get("group_id") in joined_ids
     ][:4]
-    recommended_groups = [group for group in COMMUNITY_GROUPS if group["id"] not in joined_ids][:3]
+
     trending_topics = dedupe_preserving_order(
-        [group["category"] for group in COMMUNITY_GROUPS] + profile.get("comfort_topics", [])
-    )[:5]
+        [group["category"] for group in COMMUNITY_GROUPS]
+        + profile.get("comfort_topics", [])
+        + [tag for post in recent_discussions for tag in post.get("tags", [])]
+    )[:6]
+
+    support_received = int(profile.get("support_received", 0) or 0)
+    support_given = int(profile.get("support_given", 0) or 0)
+    posts_count = int(profile.get("posts_count", 0) or 0)
+    saved_posts_count = int(profile.get("saved_posts_count", 0) or 0)
+    momentum_score = len(joined_groups) * 8 + posts_count * 10 + support_given + support_received + saved_posts_count * 3
+    support_streak = max(3, min(21, len(joined_groups) * 2 + posts_count + max(1, support_given // 3 or 1)))
+    next_event = build_community_events(joined_groups[0]["id"] if joined_groups else "")[:1]
+    hot_conversation = max(
+        recent_discussions,
+        key=lambda post: (post.get("reaction_total", 0), post.get("reply_count", 0)),
+        default=None,
+    )
 
     return {
         "profile": profile,
@@ -3421,8 +4501,18 @@ def build_community_profile(username: str) -> dict[str, Any]:
         "safe_circle": next((group for group in COMMUNITY_GROUPS if group["id"] == "grp-003"), None),
         "support_summary": (
             f"You are active in {len(joined_groups)} support circles and have received "
-            f"{profile.get('support_received', 0)} supportive responses so far."
+            f"{support_received} supportive responses so far."
         ),
+        "support_streak": support_streak,
+        "saved_posts_count": saved_posts_count,
+        "momentum_score": momentum_score,
+        "highlight_message": (
+            "You are steadily building a warm support network through honest posts and gentle follow-through."
+            if momentum_score >= 45
+            else "You are growing a dependable support rhythm — every thoughtful interaction counts."
+        ),
+        "hot_conversation": hot_conversation,
+        "next_event": next_event[0] if next_event else None,
     }
 
 

@@ -48,7 +48,6 @@
             <a class="nav-link {% if active_page == 'therapists' %}active{% endif %}" href="{{ url_for('therapists_page') }}">Therapists</a>
             <a class="nav-link {% if active_page == 'community' %}active{% endif %}" href="{{ url_for('community_page') }}">Community</a>
             {% if is_logged_in %}
-              <a class="nav-link {% if active_page == 'patients' %}active{% endif %}" href="{{ url_for('browse_patients') }}">People</a>
               <a class="nav-link {% if active_page == 'messages' %}active{% endif %}" href="{{ url_for('view_messages') }}">Messages</a>
             {% endif %}
             <a class="nav-link {% if active_page == 'safe-space' %}active{% endif %}" href="{{ url_for('safe_space_page') }}">Safe Space</a>
@@ -57,6 +56,21 @@
           </nav>
 
           <div class="nav-actions">
+            <form class="nav-search-form" action="{{ url_for('search_page') }}" method="get" role="search" aria-label="Search stories, people, and community">
+              <input
+                class="nav-search-input"
+                type="search"
+                name="q"
+                value="{{ global_search_q }}"
+                placeholder="Search all"
+                autocomplete="off"
+              />
+              <button class="nav-search-submit" type="submit" aria-label="Search">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M15.8 14.4h-.74l-.26-.25a5.9 5.9 0 1 0-.64.64l.25.26v.74L19 20.2 20.2 19zM10.4 15A4.6 4.6 0 1 1 15 10.4 4.6 4.6 0 0 1 10.4 15" />
+                </svg>
+              </button>
+            </form>
             {% if is_logged_in %}
               <a class="btn btn-primary" href="{{ url_for('dashboard_page') }}">Dashboard</a>
               <a class="btn btn-ghost" href="{{ url_for('logout') }}">Logout</a>

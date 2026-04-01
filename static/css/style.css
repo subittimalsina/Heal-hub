@@ -5579,6 +5579,7 @@ code {
 .page-community .community-neo-circle {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.84);
+  align-items: flex-start;
 }
 
 .page-community .community-neo-circle.active {
@@ -5590,6 +5591,31 @@ code {
 
 .page-community .community-neo-circle-link {
   color: var(--text-strong);
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.page-community .community-neo-circle-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.page-community .community-neo-circle-copy strong {
+  display: block;
+  color: var(--text-strong);
+  line-height: 1.35;
+}
+
+.page-community .community-neo-circle-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--muted);
 }
 
 .page-community .community-neo-circle-icon {
@@ -5685,4 +5711,73 @@ code {
 .page-community .community-neo select:focus-visible {
   outline: 2px solid rgba(31, 116, 183, 0.42);
   outline-offset: 2px;
+}
+
+.page-community .community-neo-feed-context {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(31, 116, 183, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.86);
+  display: grid;
+  gap: 10px;
+}
+
+.page-community .community-neo-feed-context-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.page-community .community-neo-feed-context-head h3 {
+  margin: 4px 0 0;
+  font-size: 1.02rem;
+}
+
+.page-community .community-neo-feed-context p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.page-community .community-neo-feed-context-meta,
+.page-community .community-neo-feed-context-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-community .community-neo-feed-context-meta span,
+.page-community .community-neo-feed-context-tags span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(21, 33, 58, 0.08);
+  background: rgba(21, 33, 58, 0.04);
+  color: var(--muted-strong);
+  font-size: 0.8rem;
+}
+
+.page-community .community-neo-feed-context-tags span {
+  border-color: rgba(22, 132, 120, 0.24);
+  background: rgba(22, 132, 120, 0.12);
+  color: var(--teal);
+}
+
+.page-community .community-neo-post-community-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .page-community .community-neo-feed-context-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
