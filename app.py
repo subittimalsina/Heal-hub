@@ -21,6 +21,7 @@ from flask import (
     url_for,
 )
 from uuid import uuid4
+from werkzeug.utils import secure_filename
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -169,6 +170,9 @@ LOGIN_ENABLED_USERNAMES = ("patient", "doctor")
 
 PRESCRIPTIONS_PATH = DATA_DIR / "prescriptions.json"
 DOCTOR_NOTES_PATH = DATA_DIR / "doctor_notes.json"
+USER_PROFILES_PATH = DATA_DIR / "user_profiles.json"
+PROFILE_UPLOAD_DIR = BASE_DIR / "static" / "uploads" / "profiles"
+ALLOWED_PROFILE_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 
 PORTAL_PATIENTS: dict[str, dict[str, Any]] = {
     "patient": {
@@ -273,13 +277,25 @@ def portal_patient_for_user(user: dict[str, Any] | None) -> dict[str, Any]:
 
 def patient_prescriptions(username: str) -> list[dict[str, Any]]:
     prescriptions = load_records(PRESCRIPTIONS_PATH)
-    items = [item for item in prescriptions if item.get("patient_username") == username]
+    items = [dict(item) for item in prescriptions if item.get("patient_username") == username]
+    for item in items:
+        doctor_profile = account_profile_for_username(str(item.get("doctor_username", "")).strip())
+        if doctor_profile:
+            item["doctor_name"] = doctor_profile.get("display_name", item.get("doctor_name", "Doctor"))
+            item["doctor_avatar"] = doctor_profile.get("avatar", "🩺")
+            item["doctor_avatar_image"] = doctor_profile.get("avatar_image", "")
     return sorted(items, key=lambda item: item.get("created_at", ""), reverse=True)
 
 
 def patient_notes(username: str) -> list[dict[str, Any]]:
     notes = load_records(DOCTOR_NOTES_PATH)
-    items = [item for item in notes if item.get("patient_username") == username]
+    items = [dict(item) for item in notes if item.get("patient_username") == username]
+    for item in items:
+        doctor_profile = account_profile_for_username(str(item.get("doctor_username", "")).strip())
+        if doctor_profile:
+            item["doctor_name"] = doctor_profile.get("display_name", item.get("doctor_name", "Doctor"))
+            item["doctor_avatar"] = doctor_profile.get("avatar", "🩺")
+            item["doctor_avatar_image"] = doctor_profile.get("avatar_image", "")
     return sorted(items, key=lambda item: item.get("created_at", ""), reverse=True)
 
 
@@ -1623,14 +1639,8 @@ def medicine_search_page() -> str:
 
 
 @app.get("/wellness")
-def wellness_page() -> str:
-    return render_template(
-        "wellness.html",
-        active_page="wellness",
-        body_class="page-wellness",
-        page_id="wellness",
-        page_title="Heal Hub Wellness",
-    )
+def wellness_page() -> Any:
+    return redirect(url_for("mood_check_page"))
 
 
 @app.route("/mood-check", methods=["GET", "POST"])
@@ -1762,26 +1772,13 @@ def doctor_dashboard_page() -> Any:
         flash("Doctor access is required for that page.", "error")
         return redirect(url_for("dashboard_page"))
 
-    if request.method == "POST":
-        patient_username = request.form.get("patient_username", "patient").strip() or "patient"
-        prescriptions = load_records(PRESCRIPTIONS_PATH)
-        prescriptions.insert(0, {
-            "id": f"rx-{int(datetime.utcnow().timestamp())}",
-            "patient_username": patient_username,
-            "doctor_username": user.get("username"),
-            "doctor_name": user.get("display_name"),
-            "medicine_name": request.form.get("medicine_name", "").strip(),
-            "dosage": request.form.get("dosage", "").strip(),
-            "frequency": request.form.get("frequency", "").strip(),
-            "duration": request.form.get("duration", "").strip(),
-            "purpose": request.form.get("purpose", "").strip(),
-            "instructions": request.form.get("instructions", "").strip(),
-            "warnings": request.form.get("warnings", "").strip(),
-            "refill_status": request.form.get("refill_status", "In active cycle").strip(),
-            "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
-        })
-        save_json(PRESCRIPTIONS_PATH, prescriptions)
-        flash("Prescription added to the patient portal.", "success")
+    if request.method == "POST" and request.form.get("dashboard_action") == "update_profile":
+        try:
+            update_dashboard_profile(user)
+        except ValueError as exc:
+            flash(str(exc), "error")
+        else:
+            flash("Doctor profile updated.", "success")
         return redirect(url_for("doctor_dashboard_page"))
 
     dashboard_context = build_doctor_dashboard_context(user)
@@ -1795,13 +1792,22 @@ def doctor_dashboard_page() -> Any:
     )
 
 
-@app.get("/patient/dashboard")
+@app.route("/patient/dashboard", methods=["GET", "POST"])
 @login_required
 def patient_dashboard_page() -> Any:
     user = session.get("user", {})
     if user.get("role") != "patient":
         flash("Patient access is required for that page.", "error")
         return redirect(url_for("dashboard_page"))
+
+    if request.method == "POST" and request.form.get("dashboard_action") == "update_profile":
+        try:
+            update_dashboard_profile(user)
+        except ValueError as exc:
+            flash(str(exc), "error")
+        else:
+            flash("Patient profile updated.", "success")
+        return redirect(url_for("patient_dashboard_page"))
 
     dashboard_context = build_patient_dashboard_context(user)
     return render_template(
@@ -2968,6 +2974,201 @@ PATIENT_PROFILES: dict[str, dict[str, Any]] = {
 }
 
 
+def editable_profile_defaults() -> dict[str, dict[str, Any]]:
+    patient_profile = PATIENT_PROFILES.get("patient", {})
+    doctor_user = DEMO_USERS.get("doctor", {})
+    patient_user = DEMO_USERS.get("patient", {})
+    return {
+        "patient": {
+            "username": "patient",
+            "role": "patient",
+            "display_name": str(patient_profile.get("display_name", patient_user.get("display_name", "Patient"))),
+            "headline": str(patient_user.get("headline", "Patient Portal")),
+            "bio": str(patient_profile.get("bio", "Tell people a little about yourself.")),
+            "location": str(patient_profile.get("location", "Kathmandu")),
+            "avatar": str(patient_profile.get("avatar", "🙂")),
+            "avatar_image": str(patient_profile.get("avatar_image", "")),
+        },
+        "doctor": {
+            "username": "doctor",
+            "role": "doctor",
+            "display_name": str(doctor_user.get("display_name", "Doctor")),
+            "headline": str(doctor_user.get("headline", "Clinical Operations Lead")),
+            "bio": "Primary doctor linked to the patient dashboard for follow-ups, care-plan questions, and medication support.",
+            "location": "Clinical Operations",
+            "avatar": "🩺",
+            "avatar_image": "",
+        },
+    }
+
+
+def load_user_profiles() -> dict[str, dict[str, Any]]:
+    profiles = copy.deepcopy(editable_profile_defaults())
+    if not USER_PROFILES_PATH.exists():
+        return profiles
+
+    stored = load_json(USER_PROFILES_PATH)
+    if not isinstance(stored, dict):
+        return profiles
+
+    for username, values in stored.items():
+        if username not in profiles or not isinstance(values, dict):
+            continue
+        for key in ("display_name", "headline", "bio", "location", "avatar", "avatar_image"):
+            if key in values:
+                profiles[username][key] = str(values.get(key, "")).strip()
+    return profiles
+
+
+def save_user_profiles(profiles: dict[str, dict[str, Any]]) -> None:
+    save_json(USER_PROFILES_PATH, profiles)
+
+
+def account_profile_for_username(username: str) -> dict[str, Any] | None:
+    cleaned = str(username).strip()
+    if not cleaned:
+        return None
+
+    profiles = load_user_profiles()
+    if cleaned in profiles:
+        return copy.deepcopy(profiles[cleaned])
+
+    if cleaned in PATIENT_PROFILES:
+        patient = PATIENT_PROFILES[cleaned]
+        return {
+            "username": cleaned,
+            "role": "patient",
+            "display_name": str(patient.get("display_name", cleaned)),
+            "headline": "Patient Portal",
+            "bio": str(patient.get("bio", "")),
+            "location": str(patient.get("location", "")),
+            "avatar": str(patient.get("avatar", "🙂")),
+            "avatar_image": str(patient.get("avatar_image", "")),
+        }
+
+    if cleaned in DEMO_USERS:
+        demo_user = DEMO_USERS[cleaned]
+        return {
+            "username": cleaned,
+            "role": str(demo_user.get("role", "")),
+            "display_name": str(demo_user.get("display_name", cleaned)),
+            "headline": str(demo_user.get("headline", demo_user.get("role", ""))),
+            "bio": "",
+            "location": "",
+            "avatar": "🙂",
+            "avatar_image": "",
+        }
+
+    return None
+
+
+def sync_user_profiles() -> dict[str, dict[str, Any]]:
+    profiles = load_user_profiles()
+    save_user_profiles(profiles)
+
+    patient_profile = profiles.get("patient", {})
+    if patient_profile:
+        DEMO_USERS.setdefault("patient", {}).update(
+            {
+                "display_name": patient_profile.get("display_name", DEMO_USERS.get("patient", {}).get("display_name", "Patient")),
+                "headline": patient_profile.get("headline", DEMO_USERS.get("patient", {}).get("headline", "Patient Portal")),
+            }
+        )
+        PATIENT_PROFILES.setdefault("patient", {}).update(
+            {
+                "display_name": patient_profile.get("display_name", "Patient"),
+                "bio": patient_profile.get("bio", ""),
+                "location": patient_profile.get("location", ""),
+                "avatar": patient_profile.get("avatar", "🙂"),
+                "avatar_image": patient_profile.get("avatar_image", ""),
+            }
+        )
+        if "patient" in PORTAL_PATIENTS:
+            PORTAL_PATIENTS["patient"]["display_name"] = patient_profile.get("display_name", PORTAL_PATIENTS["patient"].get("display_name", "Patient"))
+        for booking in BOOKINGS_DATA:
+            if booking.get("patient_username") == "patient":
+                booking["patient_name"] = patient_profile.get("display_name", booking.get("patient_name", "Patient"))
+        for client in DOCTOR_CLIENTS_DATA:
+            if client.get("username") == "patient":
+                client["display_name"] = patient_profile.get("display_name", client.get("display_name", "Patient"))
+
+    doctor_profile = profiles.get("doctor", {})
+    if doctor_profile:
+        DEMO_USERS.setdefault("doctor", {}).update(
+            {
+                "display_name": doctor_profile.get("display_name", DEMO_USERS.get("doctor", {}).get("display_name", "Doctor")),
+                "headline": doctor_profile.get("headline", DEMO_USERS.get("doctor", {}).get("headline", "Clinical Operations Lead")),
+            }
+        )
+        for portal_patient in PORTAL_PATIENTS.values():
+            if portal_patient.get("doctor_username") == "doctor":
+                portal_patient["doctor_name"] = doctor_profile.get("display_name", portal_patient.get("doctor_name", "Doctor"))
+
+    return profiles
+
+
+def clean_profile_line(value: str, max_length: int) -> str:
+    return " ".join(str(value).strip().split())[:max_length]
+
+
+def clean_profile_bio(value: str, max_length: int) -> str:
+    return str(value).strip()[:max_length]
+
+
+def save_profile_image(file_storage: Any, username: str) -> str:
+    filename = secure_filename(str(getattr(file_storage, "filename", "") or ""))
+    if not filename:
+        return ""
+
+    suffix = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if suffix not in ALLOWED_PROFILE_IMAGE_EXTENSIONS:
+        raise ValueError("Use a PNG, JPG, JPEG, WEBP, or GIF image for the profile picture.")
+
+    PROFILE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    target_name = f"{username}-{uuid4().hex[:10]}.{suffix}"
+    target_path = PROFILE_UPLOAD_DIR / target_name
+    file_storage.save(target_path)
+    return f"uploads/profiles/{target_name}"
+
+
+def update_dashboard_profile(user: dict[str, Any]) -> dict[str, Any]:
+    username = str(user.get("username", "")).strip()
+    if username not in {"patient", "doctor"}:
+        raise ValueError("Only the patient and doctor demo accounts can edit dashboard profiles right now.")
+
+    profiles = load_user_profiles()
+    existing = profiles.get(username) or editable_profile_defaults().get(username, {})
+    uploaded_image = request.files.get("avatar_image")
+    avatar_image = existing.get("avatar_image", "")
+    if uploaded_image and getattr(uploaded_image, "filename", ""):
+        avatar_image = save_profile_image(uploaded_image, username)
+
+    updated = {
+        **existing,
+        "display_name": clean_profile_line(request.form.get("display_name", existing.get("display_name", "")), 80)
+        or existing.get("display_name", username.title()),
+        "headline": clean_profile_line(request.form.get("headline", existing.get("headline", "")), 90)
+        or existing.get("headline", user.get("role", "").title()),
+        "location": clean_profile_line(request.form.get("location", existing.get("location", "")), 80)
+        or existing.get("location", ""),
+        "bio": clean_profile_bio(request.form.get("bio", existing.get("bio", "")), 280)
+        or existing.get("bio", ""),
+        "avatar": clean_profile_line(request.form.get("avatar", existing.get("avatar", "🙂")), 12)
+        or existing.get("avatar", "🙂"),
+        "avatar_image": avatar_image,
+    }
+    profiles[username] = updated
+    save_user_profiles(profiles)
+    sync_user_profiles()
+
+    session_user = dict(session.get("user", {}))
+    session_user["display_name"] = updated["display_name"]
+    session_user["headline"] = updated["headline"]
+    session["user"] = session_user
+    session.modified = True
+    return updated
+
+
 def therapist_profile_for_chat(therapist_id: str) -> dict[str, Any] | None:
     therapist = next((item for item in THERAPISTS_DATA if item.get("id") == therapist_id), None)
     if not therapist:
@@ -2977,6 +3178,7 @@ def therapist_profile_for_chat(therapist_id: str) -> dict[str, Any] | None:
         "username": therapist["id"],
         "display_name": therapist["name"],
         "avatar": therapist.get("avatar_emoji", "🩺"),
+        "avatar_image": therapist.get("avatar_image", ""),
         "bio": therapist.get("bio", "Therapist on the Heal Hub care team."),
         "location": therapist.get("specialty", "Therapist"),
         "interests": therapist.get("tags", []),
@@ -2993,18 +3195,21 @@ def doctor_profile_for_chat(username: str) -> dict[str, Any] | None:
     if username != "doctor" or username not in DEMO_USERS:
         return None
 
+    profile = account_profile_for_username(username) or {}
     user = DEMO_USERS[username]
     return {
         "username": username,
-        "display_name": user.get("display_name", "Doctor"),
-        "avatar": "🩺",
-        "bio": "Primary doctor linked to the patient dashboard for follow-ups, care-plan questions, and prescription support.",
-        "location": "Clinical Operations",
+        "display_name": profile.get("display_name", user.get("display_name", "Doctor")),
+        "avatar": profile.get("avatar", "🩺"),
+        "avatar_image": profile.get("avatar_image", ""),
+        "bio": profile.get("bio", "Primary doctor linked to the patient dashboard for follow-ups, care-plan questions, and prescription support."),
+        "location": profile.get("location", "Clinical Operations"),
         "interests": ["follow-up care", "medication support", "patient guidance"],
         "joined_communities": [],
         "connection_status": "Doctor",
         "member_since": "",
         "role": "doctor",
+        "headline": profile.get("headline", user.get("headline", "Clinical Operations Lead")),
         "profile_href": "",
         "profile_link_label": "",
     }
@@ -3060,6 +3265,9 @@ def can_message_partner(user: dict[str, Any], partner_username: str) -> bool:
     if not cleaned or cleaned == user.get("username", ""):
         return False
     return cleaned in messageable_partner_usernames(user)
+
+
+sync_user_profiles()
 
 MESSAGES_DATA: list[dict[str, Any]] = [
     {
@@ -4689,6 +4897,7 @@ def build_platform_snapshot() -> dict[str, Any]:
 
 def build_patient_dashboard_context(user: dict[str, Any]) -> dict[str, Any]:
     username = user.get("username", "patient")
+    account_profile = account_profile_for_username(username) or {}
     portal_patient = portal_patient_for_user(user)
     prescriptions = patient_prescriptions(username)
     notes = patient_notes(username)
@@ -4732,6 +4941,7 @@ def build_patient_dashboard_context(user: dict[str, Any]) -> dict[str, Any]:
         "pending_review_bookings": pending_review_bookings,
         "latest_booking": latest_booking,
         "doctor_chat_target": doctor_chat_target,
+        "account_profile": account_profile,
         "recommended_movies": movie_profile["recommended_movies"],
         "watched_movies": movie_profile["watched_movies"],
         "watched_story_history": movie_profile["recently_watched"],
@@ -4801,24 +5011,41 @@ def build_doctor_client_cards() -> list[dict[str, Any]]:
 
 
 def build_doctor_dashboard_context(user: dict[str, Any]) -> dict[str, Any]:
+    doctor_profile = account_profile_for_username(user.get("username", "doctor")) or {}
     portal_patient = PORTAL_PATIENTS["patient"]
+    focus_patient_profile = account_profile_for_username(portal_patient.get("username", "patient")) or PATIENT_PROFILES.get("patient", {})
     patient_story_profile = build_movie_profile("patient")
     patient_community = build_community_profile("patient")
     doctor_bookings = sorted(
         BOOKINGS_DATA,
         key=lambda booking: (booking.get("date", ""), booking.get("time", "")),
     )
+    pending_statuses = {"requested", "pending", "awaiting review"}
+    pending_review_bookings = [
+        booking for booking in doctor_bookings
+        if str(booking.get("status", "")).strip().lower() in pending_statuses
+    ]
+    upcoming_bookings = [
+        booking for booking in doctor_bookings
+        if str(booking.get("status", "")).strip().lower() not in pending_statuses
+    ]
+    latest_booking = upcoming_bookings[0] if upcoming_bookings else doctor_bookings[0] if doctor_bookings else None
 
     return {
+        "doctor_profile": doctor_profile,
         "portal_patient": portal_patient,
-        "prescriptions": patient_prescriptions("patient"),
-        "notes": patient_notes("patient"),
         "ai_summary": ai_triage_summary(["chest pain", "shortness of breath"]),
         "patient_insights": get_patient_insights("patient"),
         "patient_story_profile": patient_story_profile,
         "patient_community": patient_community,
         "bookings": doctor_bookings,
-        "doctor_clients": build_doctor_client_cards(),
+        "upcoming_bookings": upcoming_bookings,
+        "pending_review_bookings": pending_review_bookings,
+        "latest_booking": latest_booking,
+        "focus_patient_profile": focus_patient_profile,
+        "focus_patient_story_history": patient_story_profile["recently_watched"],
+        "focus_joined_groups": patient_community["joined_groups"],
+        "patient_chat_target": portal_patient.get("username", "patient"),
         "quick_actions": [
             {"label": "Open story library", "href": url_for("movies_page")},
             {"label": "Review bookings", "href": url_for("therapists_page")},

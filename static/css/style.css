@@ -449,9 +449,9 @@ img {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 74px;
-  height: 74px;
-  padding: 5px;
+  width: 56px;
+  height: 56px;
+  padding: 4px;
   overflow: visible;
   isolation: isolate;
   border-radius: 999px;
@@ -462,8 +462,11 @@ img {
   color: #fff;
   text-decoration: none;
   box-shadow:
-    0 20px 38px rgba(21, 33, 58, 0.26),
-    0 0 0 6px rgba(31, 116, 183, 0.16);
+    0 14px 28px rgba(21, 33, 58, 0.22),
+    0 0 0 4px rgba(31, 116, 183, 0.12);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
@@ -474,40 +477,54 @@ img {
 .ai-fab-circle::before {
   content: "";
   position: absolute;
-  inset: -7px;
+  inset: -4px;
   border-radius: 999px;
-  border: 1px solid rgba(31, 116, 183, 0.34);
+  border: 1px solid rgba(31, 116, 183, 0.24);
   pointer-events: none;
   animation: aiFabRing 2.7s ease-out infinite;
 }
 
-.ai-fab-logo {
+.ai-fab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 100%;
   border-radius: 999px;
-  object-fit: cover;
-  object-position: center;
   border: 2px solid rgba(255, 255, 255, 0.9);
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.28), transparent 32%),
+    linear-gradient(160deg, rgba(16, 30, 63, 0.18), rgba(255, 255, 255, 0.08));
   box-shadow: inset 0 0 0 1px rgba(21, 33, 58, 0.14);
+}
+
+.ai-fab-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .ai-fab-label {
   position: absolute;
-  right: -4px;
-  bottom: -2px;
+  right: -2px;
+  bottom: -1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 30px;
-  min-height: 22px;
-  padding: 3px 8px;
+  min-width: 22px;
+  min-height: 18px;
+  padding: 2px 5px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.92);
   background: #15213a;
   color: #fff;
-  font-size: 0.66rem;
+  font-size: 0.52rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   line-height: 1;
 }
 
@@ -515,13 +532,27 @@ img {
   transform: translateY(-2px) scale(1.04);
   border-color: rgba(255, 255, 255, 1);
   box-shadow:
-    0 24px 44px rgba(21, 33, 58, 0.3),
-    0 0 0 8px rgba(31, 116, 183, 0.2);
+    0 18px 32px rgba(21, 33, 58, 0.26),
+    0 0 0 5px rgba(31, 116, 183, 0.16);
 }
 
 .ai-fab-circle:focus-visible {
   outline: 3px solid rgba(44, 149, 135, 0.28);
   outline-offset: 2px;
+}
+
+.ai-fab-circle.is-dragging {
+  cursor: grabbing;
+  animation: none;
+  transition: none;
+  transform: scale(1.03);
+  box-shadow:
+    0 20px 34px rgba(21, 33, 58, 0.28),
+    0 0 0 5px rgba(31, 116, 183, 0.16);
+}
+
+.ai-fab-circle.is-dragging::before {
+  animation: none;
 }
 
 @keyframes aiFabPulse {
@@ -4022,16 +4053,21 @@ code {
   .ai-fab-circle {
     right: 14px;
     bottom: 14px;
-    width: 62px;
-    height: 62px;
-    padding: 4px;
+    width: 50px;
+    height: 50px;
+    padding: 3px;
   }
 
   .ai-fab-label {
-    min-width: 26px;
-    min-height: 20px;
-    padding: 2px 6px;
-    font-size: 0.6rem;
+    min-width: 20px;
+    min-height: 16px;
+    padding: 2px 4px;
+    font-size: 0.48rem;
+  }
+
+  .ai-fab-icon svg {
+    width: 20px;
+    height: 20px;
   }
 
   .hub-stat-band,
@@ -6344,6 +6380,57 @@ code {
   max-width: 720px;
 }
 
+.page-dashboard .dashboard-profile-chip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.page-dashboard .dashboard-profile-chip-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.page-dashboard .dashboard-profile-chip-copy .story-filter-chip {
+  width: fit-content;
+}
+
+.page-dashboard .dashboard-profile-chip-copy .meta-label {
+  margin: 0;
+}
+
+.page-dashboard .dashboard-profile-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(17, 62, 103, 0.14);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.34), transparent 28%),
+    linear-gradient(145deg, rgba(31, 116, 183, 0.14), rgba(22, 132, 120, 0.16));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  color: var(--text-strong);
+  box-shadow: 0 10px 20px rgba(17, 62, 103, 0.08);
+}
+
+.page-dashboard .dashboard-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.page-dashboard .dashboard-profile-avatar-large {
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+  font-size: 2.5rem;
+}
+
 .page-dashboard .patient-dashboard-heading h1 {
   margin: 0;
   font-size: clamp(2.2rem, 4vw, 3.4rem);
@@ -6478,6 +6565,18 @@ code {
   box-shadow: 0 18px 34px rgba(17, 62, 103, 0.16);
 }
 
+.page-dashboard .doctor-dashboard-hero-card {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(22, 132, 120, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 251, 249, 0.95));
+}
+
+.page-dashboard .doctor-dashboard-spotlight {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.12), transparent 20%),
+    linear-gradient(180deg, #17353d, #155152 58%, #11606a);
+}
+
 .page-dashboard .patient-dashboard-spotlight-kicker {
   margin: 0;
   color: rgba(255, 255, 255, 0.72);
@@ -6545,6 +6644,68 @@ code {
   grid-template-columns: 1fr;
   gap: 20px;
   align-items: start;
+}
+
+.page-dashboard .profile-editor-card {
+  padding: 22px;
+}
+
+.page-dashboard .profile-editor-shell {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.page-dashboard .profile-editor-preview {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(17, 62, 103, 0.1);
+  background: linear-gradient(180deg, rgba(247, 251, 255, 0.98), rgba(241, 247, 253, 0.92));
+}
+
+.page-dashboard .profile-editor-preview strong {
+  font-size: 1.08rem;
+  color: var(--text-strong);
+}
+
+.page-dashboard .profile-editor-preview p,
+.page-dashboard .profile-editor-preview small {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.page-dashboard .profile-editor-form {
+  display: grid;
+  gap: 14px;
+}
+
+.page-dashboard .profile-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.page-dashboard .profile-editor-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.page-dashboard .profile-editor-form label > span {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.page-dashboard .profile-editor-form input[type="file"] {
+  min-height: 52px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(17, 62, 103, 0.18);
+  background: rgba(247, 251, 255, 0.92);
 }
 
 .page-dashboard .patient-dashboard-column {
@@ -6817,6 +6978,10 @@ code {
   .page-dashboard .patient-story-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .page-dashboard .profile-editor-shell {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 820px) {
@@ -6829,6 +6994,10 @@ code {
     min-width: 0;
   }
 
+  .page-dashboard .dashboard-profile-chip {
+    align-items: flex-start;
+  }
+
   .page-dashboard .patient-dashboard-hero-card {
     padding: 24px;
   }
@@ -6837,6 +7006,7 @@ code {
   .page-dashboard .patient-community-meta,
   .page-dashboard .patient-community-stack,
   .page-dashboard .patient-story-grid,
+  .page-dashboard .profile-editor-grid,
   .page-dashboard .patient-dashboard-spotlight-meta {
     grid-template-columns: 1fr;
   }

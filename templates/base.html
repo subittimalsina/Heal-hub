@@ -51,7 +51,6 @@
               <a class="nav-link {% if active_page == 'messages' %}active{% endif %}" href="{{ url_for('view_messages') }}">Messages</a>
             {% endif %}
             <a class="nav-link {% if active_page == 'safe-space' %}active{% endif %}" href="{{ url_for('safe_space_page') }}">Safe Space</a>
-            <a class="nav-link {% if active_page == 'wellness' %}active{% endif %}" href="{{ url_for('wellness_page') }}">Wellness</a>
             <a class="nav-link {% if active_page == 'about' %}active{% endif %}" href="{{ url_for('about_page') }}">About</a>
           </nav>
 
@@ -123,8 +122,15 @@
       </div>
     </footer>
 
-    <a class="ai-fab-circle" href="{{ url_for('ai_agent_page') }}" aria-label="Open AI Agent" title="Open AI Agent">
-      <img class="ai-fab-logo" src="{{ url_for('static', filename='images/logo.jpg') }}" alt="" />
+    <a class="ai-fab-circle" href="{{ url_for('ai_agent_page') }}" aria-label="Open AI Agent" title="Open AI Agent" data-ai-fab>
+      <span class="ai-fab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3.2a6 6 0 0 1 5.97 5.45l.03.75v1.1a3.2 3.2 0 0 1 1.95 2.94v1.1a3.2 3.2 0 0 1-3.2 3.2h-1.3a3.45 3.45 0 0 1-3.25 2.35h-1.65a1.6 1.6 0 0 1 0-3.2h1.65a.25.25 0 0 0 .24-.18l.02-.08H11a6 6 0 0 1-5.97-5.45L5 11.4V9.4a6 6 0 0 1 6-6.2Z"></path>
+          <path d="M8.1 13.1h.01"></path>
+          <path d="M12 13.1h.01"></path>
+          <path d="M15.9 13.1h.01"></path>
+        </svg>
+      </span>
       <span class="ai-fab-label">AI</span>
     </a>
 

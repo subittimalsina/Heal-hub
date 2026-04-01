@@ -1,226 +1,369 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="dashboard-overview doctor-dashboard-hero dashboard-neo-hero" data-reveal role="main" aria-labelledby="doctor-heading">
-    <article class="surface dashboard-panel dashboard-intro-panel">
-      <div class="hero-signal-row">
-        <span class="signal-chip signal-chip-primary">Doctor Workspace</span>
-        <span class="signal-chip signal-chip-teal">{{ bookings|length }} Sessions</span>
-        <span class="signal-chip signal-chip-amber">{{ prescriptions|length }} Medicines</span>
-      </div>
+  <section class="patient-dashboard-stage doctor-dashboard-stage" role="main" aria-labelledby="doctor-heading">
+    <article class="surface dashboard-panel patient-dashboard-hero-card doctor-dashboard-hero-card" data-reveal>
+      <div class="patient-dashboard-hero-copy">
+        <div class="patient-dashboard-toolbar">
+          <div class="patient-dashboard-heading">
+            <div class="dashboard-profile-chip">
+              <div class="dashboard-profile-avatar">
+                {% if doctor_profile.avatar_image %}
+                  <img src="{{ url_for('static', filename=doctor_profile.avatar_image) }}" alt="{{ doctor_profile.display_name }} profile picture" />
+                {% else %}
+                  <span>{{ doctor_profile.avatar or "🩺" }}</span>
+                {% endif %}
+              </div>
+              <div class="dashboard-profile-chip-copy">
+                <span class="story-filter-chip small">{{ doctor_profile.headline or "Clinical Operations Lead" }}</span>
+                <p class="meta-label">{{ doctor_profile.location or "Clinical Operations" }}</p>
+              </div>
+            </div>
+            <p class="eyebrow">Doctor dashboard</p>
+            <h1 id="doctor-heading">{{ doctor_profile.display_name | default("Dr. Sharma") }}</h1>
+            <p class="lead">Upcoming sessions, patient story signals, and community context in one clean workspace.</p>
+            <p class="subcopy">{{ doctor_profile.bio or "Track what your patient is watching, where they are finding support, and what needs attention next." }}</p>
+          </div>
 
-      <div class="dashboard-intro-copy">
-        <div>
-          <p class="eyebrow">Clinical dashboard</p>
-          <h1 id="doctor-heading">{{ current_user.display_name | default("Dr. Priya Mehta") }}</h1>
+          <div class="patient-dashboard-actions">
+            <a href="{{ url_for('browse_patients') }}" class="btn btn-primary">Patients</a>
+            {% if patient_chat_target %}
+              <a
+                href="{{ url_for('view_messages', user=patient_chat_target) }}"
+                class="chat-link-btn"
+                aria-label="Message patient"
+                title="Message patient"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 18.2 6.4 14A7.6 7.6 0 1 1 12 19.6c-1.3 0-2.6-.3-3.7-.9L5 18.2Z"></path>
+                  <path d="M8.5 10.5h7"></path>
+                  <path d="M8.5 13.5h4.6"></path>
+                </svg>
+              </a>
+            {% endif %}
+            <a href="/movies" class="story-filter-chip">Stories</a>
+            <a href="/community" class="story-filter-chip">Community</a>
+          </div>
         </div>
-        <p class="lead">Manage medicines, follow-ups, and support signals in one place.</p>
-        <p class="subcopy">{{ doctor_summary.insight_note | default("Patient trend is stable with mild stress spikes in evenings.") }}</p>
+
+        <div class="patient-dashboard-stat-grid">
+          <article class="patient-dashboard-stat-card patient-dashboard-stat-card-primary">
+            <span class="meta-label">Upcoming appointments</span>
+            <strong>{{ upcoming_bookings|length }}</strong>
+            <small>confirmed sessions in the queue</small>
+          </article>
+          <article class="patient-dashboard-stat-card patient-dashboard-stat-card-amber">
+            <span class="meta-label">Awaiting review</span>
+            <strong>{{ pending_review_bookings|length }}</strong>
+            <small>requests still pending approval</small>
+          </article>
+          <article class="patient-dashboard-stat-card patient-dashboard-stat-card-teal">
+            <span class="meta-label">Stories watched</span>
+            <strong>{{ focus_patient_story_history|length }}</strong>
+            <small>recent patient story reflections</small>
+          </article>
+          <article class="patient-dashboard-stat-card patient-dashboard-stat-card-soft">
+            <span class="meta-label">Joined communities</span>
+            <strong>{{ focus_joined_groups|length }}</strong>
+            <small>support circles the patient relies on</small>
+          </article>
+        </div>
       </div>
 
-      <div class="hero-actions">
-        <a href="#add-medicine" class="btn btn-primary">Add medicine</a>
-        <a href="/patients" class="btn btn-teal">Search patients</a>
-      </div>
-
-      <div class="dashboard-kpi-grid">
-        <article class="dashboard-kpi-card">
-          <span class="meta-label">Active patient</span>
-          <strong>{{ portal_patient.display_name | default("Alex Johnson") }}</strong>
-          <small>{{ portal_patient.risk_label | default("moderate risk") }}</small>
-        </article>
-        <article class="dashboard-kpi-card">
-          <span class="meta-label">Story themes</span>
-          <strong>{{ patient_story_profile.top_category_labels|join(', ') or "Resilience, Hope" }}</strong>
-          <small>top emotional categories</small>
-        </article>
-        <article class="dashboard-kpi-card">
-          <span class="meta-label">Movies watched</span>
-          <strong>{{ patient_insights.movies_watched | default(14) }}</strong>
-          <small>story behavior indicators</small>
-        </article>
-        <article class="dashboard-kpi-card">
-          <span class="meta-label">Community momentum</span>
-          <strong>{{ patient_community.momentum_score | default(82) }}</strong>
-          <small>social support continuity</small>
-        </article>
-      </div>
+      <aside class="patient-dashboard-spotlight doctor-dashboard-spotlight">
+        <p class="patient-dashboard-spotlight-kicker">Next appointment</p>
+        {% if latest_booking %}
+          <div class="patient-dashboard-spotlight-date">{{ latest_booking.date }}</div>
+          <strong>{{ latest_booking.patient_name }}</strong>
+          <p>{{ latest_booking.time }} · {{ latest_booking.status|title }}</p>
+          <small>{{ latest_booking.notes }}</small>
+        {% else %}
+          <div class="patient-dashboard-spotlight-date">No booking yet</div>
+          <strong>No sessions scheduled</strong>
+          <p>As new bookings come in, they will show up here.</p>
+          <small>Use this space to track what needs attention next.</small>
+        {% endif %}
+        <div class="patient-dashboard-spotlight-meta">
+          <div>
+            <span class="meta-label">Patient</span>
+            <strong>{% if latest_booking %}{{ latest_booking.patient_name }}{% else %}Waiting for next booking{% endif %}</strong>
+          </div>
+          <div>
+            <span class="meta-label">Assigned therapist</span>
+            <strong>{% if latest_booking %}{{ latest_booking.therapist_name }}{% else %}Will appear here{% endif %}</strong>
+          </div>
+        </div>
+        {% if patient_chat_target %}
+          <div class="patient-dashboard-inline-actions">
+            <a
+              href="{{ url_for('view_messages', user=patient_chat_target) }}"
+              class="chat-link-btn"
+              aria-label="Message patient"
+              title="Message patient"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 18.2 6.4 14A7.6 7.6 0 1 1 12 19.6c-1.3 0-2.6-.3-3.7-.9L5 18.2Z"></path>
+                <path d="M8.5 10.5h7"></path>
+                <path d="M8.5 13.5h4.6"></path>
+              </svg>
+            </a>
+          </div>
+        {% endif %}
+      </aside>
     </article>
 
-    <aside class="dashboard-overview-side dashboard-neo-side">
-      <article class="surface dashboard-panel dashboard-status-card">
-        <span class="meta-label">Patient focus</span>
-        <strong>{{ portal_patient.primary_track|replace('-', ' ')|title | default("Anxiety support") }}</strong>
-        <p>{{ portal_patient.summary | default("Better sleep trend this week; continue routine reinforcement.") }}</p>
-        <small>Next follow-up: {{ portal_patient.next_follow_up | default("12 Apr") }}</small>
-      </article>
-
-      <article class="surface dashboard-panel dashboard-status-card">
-        <span class="meta-label">Top story themes</span>
-        <strong>{{ patient_story_profile.top_category_labels|join(', ') or "Still emerging" }}</strong>
-        <p>{{ patient_insights.story_preference_summary | default("Story preferences are building from recent watch patterns.") }}</p>
-      </article>
-    </aside>
-  </section>
-
-  <section class="dashboard-neo-shell">
-    <div class="dashboard-neo-stack">
-      <article class="surface dashboard-panel dashboard-intake-panel" data-reveal id="add-medicine">
+    <section class="patient-dashboard-layout">
+      <article class="surface dashboard-panel patient-dashboard-panel profile-editor-card" data-reveal>
         <div class="dashboard-section-head">
           <div>
-            <p class="eyebrow">Prescription workflow</p>
-            <h2>Add medicine</h2>
+            <p class="eyebrow">Profile</p>
+            <h2>Doctor profile</h2>
           </div>
         </div>
 
-        <form class="intake-form dashboard-form" method="post">
-          <input type="hidden" name="patient_username" value="{{ portal_patient.username | default('patient') }}" />
-          <div class="input-row two-column">
-            <label><span>Medicine name</span><input name="medicine_name" placeholder="Amlodipine" required /></label>
-            <label><span>Purpose</span><input name="purpose" placeholder="Blood pressure support" required /></label>
+        <div class="profile-editor-shell">
+          <div class="profile-editor-preview">
+            <div class="dashboard-profile-avatar dashboard-profile-avatar-large">
+              {% if doctor_profile.avatar_image %}
+                <img src="{{ url_for('static', filename=doctor_profile.avatar_image) }}" alt="{{ doctor_profile.display_name }} profile picture" />
+              {% else %}
+                <span>{{ doctor_profile.avatar or "🩺" }}</span>
+              {% endif %}
+            </div>
+            <strong>{{ doctor_profile.display_name }}</strong>
+            <span class="meta-label">{{ doctor_profile.headline or "Clinical Operations Lead" }}</span>
+            <p>{{ doctor_profile.bio or "Add a short profile so patients know who is supporting them." }}</p>
+            <small>{{ doctor_profile.location or "Clinical Operations" }}</small>
           </div>
-          <div class="input-row three-column">
-            <label><span>Dosage</span><input name="dosage" placeholder="5 mg" required /></label>
-            <label><span>Frequency</span><input name="frequency" placeholder="Once daily" required /></label>
-            <label><span>Duration</span><input name="duration" placeholder="30 days" required /></label>
-          </div>
-          <label><span>Instructions</span><textarea name="instructions" rows="3" placeholder="Take after breakfast."></textarea></label>
-          <div class="input-row two-column">
-            <label><span>Warnings</span><input name="warnings" placeholder="Escalate if dizziness worsens." /></label>
-            <label><span>Refill status</span><input name="refill_status" placeholder="Refill due in 14 days" /></label>
-          </div>
-          <div class="button-group dashboard-button-group">
-            <button class="btn btn-primary" type="submit">Add medicine</button>
-          </div>
-        </form>
+
+          <form class="dashboard-form profile-editor-form" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="dashboard_action" value="update_profile" />
+            <div class="profile-editor-grid">
+              <label><span>Name</span><input type="text" name="display_name" maxlength="80" value="{{ doctor_profile.display_name }}" required /></label>
+              <label><span>Headline</span><input type="text" name="headline" maxlength="90" value="{{ doctor_profile.headline }}" placeholder="Clinical Operations Lead" /></label>
+            </div>
+            <div class="profile-editor-grid">
+              <label><span>Location</span><input type="text" name="location" maxlength="80" value="{{ doctor_profile.location }}" placeholder="Clinical Operations" /></label>
+              <label><span>Emoji fallback</span><input type="text" name="avatar" maxlength="12" value="{{ doctor_profile.avatar }}" placeholder="🩺" /></label>
+            </div>
+            <label>
+              <span>Profile picture</span>
+              <input type="file" name="avatar_image" accept=".png,.jpg,.jpeg,.webp,.gif" />
+            </label>
+            <label>
+              <span>Bio</span>
+              <textarea name="bio" rows="4" maxlength="280" placeholder="Tell patients what kind of support you offer.">{{ doctor_profile.bio }}</textarea>
+            </label>
+            <div class="button-group dashboard-button-group">
+              <button class="btn btn-primary" type="submit">Save profile</button>
+            </div>
+          </form>
+        </div>
       </article>
 
-      <article class="surface dashboard-panel" data-reveal>
+      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-appointments" data-reveal>
         <div class="dashboard-section-head">
           <div>
-            <p class="eyebrow">Medicine list</p>
-            <h2>Current prescriptions</h2>
+            <p class="eyebrow">Appointments</p>
+            <h2>Upcoming appointments</h2>
           </div>
+          <a href="{{ url_for('browse_patients') }}" class="story-filter-chip">Open patients</a>
         </div>
-        {% if prescriptions %}
-          <div class="patient-board dashboard-prescription-board">
-            {% for rx in prescriptions %}
-              <article class="patient-card patient-card-active">
-                <div class="patient-card-head">
-                  <strong>{{ rx.medicine_name }}</strong>
-                  <span class="status-chip status-stable">{{ rx.refill_status }}</span>
+
+        {% if upcoming_bookings %}
+          <div class="patient-appointment-stack">
+            {% for booking in upcoming_bookings %}
+              {% set status = booking.status|lower %}
+              <article class="patient-appointment-card {% if loop.first %}patient-appointment-card-featured{% endif %}">
+                <div class="patient-appointment-date-block">
+                  <span class="patient-appointment-date-label">Date</span>
+                  <strong>{{ booking.date }}</strong>
+                  <small>{{ booking.time }}</small>
                 </div>
-                <p>{{ rx.dosage }} - {{ rx.frequency }} - {{ rx.duration }}</p>
-                <small>{{ rx.instructions }}</small>
+                <div class="patient-appointment-body">
+                  <div class="patient-appointment-head">
+                    <div>
+                      <strong>{{ booking.patient_name }}</strong>
+                      <p>{{ booking.therapist_name }} · {{ booking.notes }}</p>
+                    </div>
+                    <span class="status-chip {% if status == 'confirmed' %}status-stable{% elif status == 'requested' %}status-warning{% else %}status-neutral{% endif %}">
+                      {{ booking.status|title }}
+                    </span>
+                  </div>
+                  {% if booking.patient_username %}
+                    <div class="patient-appointment-actions">
+                      <a
+                        href="{{ url_for('view_messages', user=booking.patient_username) }}"
+                        class="chat-link-btn chat-link-btn-small"
+                        aria-label="Message patient"
+                        title="Message patient"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M5 18.2 6.4 14A7.6 7.6 0 1 1 12 19.6c-1.3 0-2.6-.3-3.7-.9L5 18.2Z"></path>
+                          <path d="M8.5 10.5h7"></path>
+                          <path d="M8.5 13.5h4.6"></path>
+                        </svg>
+                      </a>
+                    </div>
+                  {% endif %}
+                </div>
               </article>
             {% endfor %}
           </div>
         {% else %}
           <div class="empty-state">
-            <h3>No medicines added yet</h3>
-            <p>Add the first prescription for this patient from the form above.</p>
+            <h3>No upcoming appointments</h3>
+            <p>Confirmed sessions will appear here as patients book them.</p>
           </div>
         {% endif %}
       </article>
 
-      <article class="surface dashboard-panel" data-reveal>
+      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-review" data-reveal>
         <div class="dashboard-section-head">
           <div>
             <p class="eyebrow">Appointments</p>
-            <h2>Upcoming sessions</h2>
+            <h2>Awaiting review</h2>
           </div>
         </div>
-        {% if bookings %}
-          <div class="timeline-list">
-            {% for booking in bookings[:6] %}
-              {% set status = booking.status|lower %}
-              <article class="timeline-card">
-                <div class="timeline-card-head">
-                  <strong>{{ booking.patient_name }}</strong>
-                  <span class="status-chip {% if status == 'confirmed' %}status-stable{% elif status == 'requested' %}status-warning{% else %}status-neutral{% endif %}">
-                    {{ booking.status|title }}
-                  </span>
+
+        {% if pending_review_bookings %}
+          <div class="patient-review-list">
+            {% for booking in pending_review_bookings %}
+              <article class="patient-review-card">
+                <div class="patient-review-card-head">
+                  <div>
+                    <strong>{{ booking.patient_name }}</strong>
+                    <p>{{ booking.date }} · {{ booking.time }}</p>
+                  </div>
+                  <span class="status-chip status-warning">{{ booking.status|title }}</span>
                 </div>
-                <p>{{ booking.therapist_name }} - {{ booking.date }} - {{ booking.time }}</p>
+                {% if booking.patient_username %}
+                  <div class="patient-appointment-actions">
+                    <a
+                      href="{{ url_for('view_messages', user=booking.patient_username) }}"
+                      class="chat-link-btn chat-link-btn-small"
+                      aria-label="Message patient"
+                      title="Message patient"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 18.2 6.4 14A7.6 7.6 0 1 1 12 19.6c-1.3 0-2.6-.3-3.7-.9L5 18.2Z"></path>
+                        <path d="M8.5 10.5h7"></path>
+                        <path d="M8.5 13.5h4.6"></path>
+                      </svg>
+                    </a>
+                  </div>
+                {% endif %}
                 <small>{{ booking.notes }}</small>
               </article>
             {% endfor %}
           </div>
         {% else %}
-          <div class="notice-banner">No upcoming appointments yet.</div>
+          <div class="patient-review-empty">
+            <span class="story-filter-chip small">All clear</span>
+            <h3>Nothing is waiting for review</h3>
+            <p>Any appointment request that still needs confirmation will show up here.</p>
+          </div>
         {% endif %}
       </article>
-    </div>
 
-    <aside class="dashboard-neo-stack">
-      <article class="surface dashboard-panel" data-reveal>
+      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-stories" data-reveal>
         <div class="dashboard-section-head">
           <div>
-            <p class="eyebrow">Patient summary</p>
-            <h2>{{ portal_patient.display_name | default("Current patient") }}</h2>
+            <p class="eyebrow">Stories</p>
+            <h2>{{ focus_patient_profile.display_name or portal_patient.display_name }} watched</h2>
           </div>
+          <a href="/movies" class="story-filter-chip">Open library</a>
         </div>
-        <div class="notice-banner">{{ portal_patient.summary | default("Capture progress, context, and the next practical step.") }}</div>
 
-        <div class="dashboard-inline-block">
-          <span class="meta-label">Conditions</span>
-          <div class="tag-cloud">
-            {% for condition in portal_patient.conditions %}
-              <span>{{ condition }}</span>
-            {% else %}
-              <span>General wellness</span>
+        {% if focus_patient_story_history %}
+          <div class="patient-story-grid">
+            {% for entry in focus_patient_story_history[:4] %}
+              {% set movie = entry.movie %}
+              <article class="patient-story-card">
+                <div class="patient-story-media">
+                  {% if movie.poster_image %}
+                    <img
+                      src="{{ url_for('static', filename=movie.poster_image) }}"
+                      alt="{{ movie.title }} poster"
+                      class="patient-story-poster"
+                    />
+                  {% else %}
+                    <div class="patient-story-poster patient-story-poster-fallback">{{ movie.poster_emoji | default("🎬") }}</div>
+                  {% endif %}
+                  <span class="patient-story-mood">{{ entry.mood_after|replace("-", " ")|title }}</span>
+                </div>
+                <div class="patient-story-copy">
+                  <div>
+                    <strong>{{ movie.title }}</strong>
+                    <small>{{ movie.type|title }} · {{ entry.watched_on }}</small>
+                  </div>
+                  <p>{{ entry.reflection }}</p>
+                  <div class="story-card-meta">
+                    <span class="story-filter-chip small">{{ movie.genre }}</span>
+                  </div>
+                </div>
+              </article>
             {% endfor %}
           </div>
+        {% else %}
+          <div class="empty-state">
+            <h3>No watched stories yet</h3>
+            <p>Completed stories will appear here with the patient’s reflections.</p>
+          </div>
+        {% endif %}
+      </article>
+
+      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-community" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Community</p>
+            <h2>{{ focus_patient_profile.display_name or portal_patient.display_name }} joined</h2>
+          </div>
+          <a href="/community" class="story-filter-chip">Open circles</a>
         </div>
 
-        <div class="dashboard-inline-block">
-          <span class="meta-label">Community circles</span>
-          <div class="tag-cloud">
-            {% for group in patient_community.joined_groups[:4] %}
-              <span>{{ group.name }}</span>
-            {% else %}
-              <span>No circles joined yet</span>
+        {% if focus_joined_groups %}
+          <div class="patient-community-stack">
+            {% for group in focus_joined_groups[:4] %}
+              <article class="patient-community-card">
+                <div class="patient-community-head">
+                  <span class="patient-community-icon">{{ group.icon }}</span>
+                  <div>
+                    <strong>{{ group.name }}</strong>
+                    <p>{{ group.description }}</p>
+                  </div>
+                  <span class="status-chip status-stable">Joined</span>
+                </div>
+                <div class="patient-community-meta">
+                  <div>
+                    <span class="meta-label">Pace</span>
+                    <strong>{{ group.pace | default("Support circle") }}</strong>
+                  </div>
+                  <div>
+                    <span class="meta-label">Session</span>
+                    <strong>{{ group.session | default("Check community for schedule") }}</strong>
+                  </div>
+                </div>
+                <div class="tag-cloud">
+                  {% if group.focus_tags %}
+                    {% for tag in group.focus_tags[:3] %}
+                      <span>{{ tag }}</span>
+                    {% endfor %}
+                  {% else %}
+                    <span>{{ group.category }}</span>
+                  {% endif %}
+                </div>
+                <small>{{ group.members }} members joined this circle</small>
+              </article>
             {% endfor %}
           </div>
-        </div>
-      </article>
-
-      <article class="surface dashboard-panel" data-reveal>
-        <div class="dashboard-section-head">
-          <div>
-            <p class="eyebrow">Client board</p>
-            <h2>Current caseload</h2>
+        {% else %}
+          <div class="empty-state">
+            <h3>No joined communities yet</h3>
+            <p>When patients join support circles, they will show up here.</p>
           </div>
-        </div>
-        <div class="dashboard-neo-list">
-          {% for client in doctor_clients[:3] %}
-            <article class="dashboard-neo-row">
-              <div class="dashboard-neo-row-head">
-                <strong>{{ client.display_name }}</strong>
-                <span class="status-chip status-neutral">{{ client.status }}</span>
-              </div>
-              <p>{{ client.focus }}</p>
-              <small>{{ client.next_step }}</small>
-            </article>
-          {% endfor %}
-        </div>
+        {% endif %}
       </article>
-
-      <article class="surface dashboard-panel" data-reveal>
-        <div class="dashboard-section-head">
-          <div>
-            <p class="eyebrow">AI triage view</p>
-            <h2>{{ ai_summary.urgency }}</h2>
-          </div>
-        </div>
-        <div class="notice-banner">Track: {{ ai_summary.track|title }}</div>
-        <ul class="stack-list">
-          {% for step in ai_summary.guidance %}
-            <li>{{ step }}</li>
-          {% endfor %}
-        </ul>
-        <small>{{ ai_summary.disclaimer }}</small>
-      </article>
-    </aside>
+    </section>
   </section>
 {% endblock %}

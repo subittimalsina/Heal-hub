@@ -30,7 +30,13 @@
               data-unread="{{ convo.unread_count }}"
               data-rank="{{ loop.index0 }}"
             >
-              <span class="chat-avatar">{{ partner.avatar or "U" }}</span>
+              <span class="chat-avatar">
+                {% if partner.avatar_image %}
+                  <img src="{{ url_for('static', filename=partner.avatar_image) }}" alt="{{ partner.display_name or convo.partner_username }} profile picture" />
+                {% else %}
+                  {{ partner.avatar or "U" }}
+                {% endif %}
+              </span>
               <div class="chat-thread-copy">
                 <div class="chat-thread-row">
                   <strong>{{ partner.display_name or convo.partner_username }}</strong>
@@ -67,7 +73,13 @@
         <header class="chat-main-head">
           <a class="chat-back-btn" href="{{ url_for('view_messages') }}">Back</a>
           <div class="chat-main-user">
-            <span class="chat-avatar large">{{ partner.avatar or "U" }}</span>
+            <span class="chat-avatar large">
+              {% if partner.avatar_image %}
+                <img src="{{ url_for('static', filename=partner.avatar_image) }}" alt="{{ partner.display_name or selected_conversation.partner_username }} profile picture" />
+              {% else %}
+                {{ partner.avatar or "U" }}
+              {% endif %}
+            </span>
             <div>
               <strong>{{ partner.display_name or selected_conversation.partner_username }}</strong>
               <p>{{ partner.location or "Community member" }}{% if partner.connection_status %} • {{ partner.connection_status }}{% endif %}</p>
@@ -127,7 +139,13 @@
       {% if selected_conversation %}
         {% set partner = selected_conversation.partner_profile or {} %}
         <div class="chat-info-top">
-          <span class="chat-avatar xlarge">{{ partner.avatar or "U" }}</span>
+          <span class="chat-avatar xlarge">
+            {% if partner.avatar_image %}
+              <img src="{{ url_for('static', filename=partner.avatar_image) }}" alt="{{ partner.display_name or selected_conversation.partner_username }} profile picture" />
+            {% else %}
+              {{ partner.avatar or "U" }}
+            {% endif %}
+          </span>
           <strong>{{ partner.display_name or selected_conversation.partner_username }}</strong>
           <p>{{ partner.bio or "Connected support partner in your healing network." }}</p>
           <small class="chat-info-meta">
@@ -200,7 +218,13 @@
 
         <div class="chat-call-stage" id="chatCallStage">
           <div class="chat-call-peer">
-            <span class="chat-avatar xlarge" id="chatCallPeerAvatar">{{ partner.avatar or "U" }}</span>
+            <span class="chat-avatar xlarge" id="chatCallPeerAvatar">
+              {% if partner.avatar_image %}
+                <img src="{{ url_for('static', filename=partner.avatar_image) }}" alt="{{ partner.display_name or selected_conversation.partner_username }} profile picture" />
+              {% else %}
+                {{ partner.avatar or "U" }}
+              {% endif %}
+            </span>
             <strong>{{ partner.display_name or selected_conversation.partner_username }}</strong>
             <p id="chatCallStatus">Connecting...</p>
           </div>
@@ -346,8 +370,16 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
       font-size: 1.5rem;
       line-height: 1;
+    }
+
+    .chat-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .chat-avatar.large {

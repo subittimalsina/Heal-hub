@@ -6,10 +6,23 @@
       <div class="patient-dashboard-hero-copy">
         <div class="patient-dashboard-toolbar">
           <div class="patient-dashboard-heading">
+            <div class="dashboard-profile-chip">
+              <div class="dashboard-profile-avatar">
+                {% if account_profile.avatar_image %}
+                  <img src="{{ url_for('static', filename=account_profile.avatar_image) }}" alt="{{ account_profile.display_name }} profile picture" />
+                {% else %}
+                  <span>{{ account_profile.avatar or "🙂" }}</span>
+                {% endif %}
+              </div>
+              <div class="dashboard-profile-chip-copy">
+                <span class="story-filter-chip small">{{ account_profile.headline or "Patient Portal" }}</span>
+                <p class="meta-label">{{ account_profile.location or "Heal Hub member" }}</p>
+              </div>
+            </div>
             <p class="eyebrow">Patient dashboard</p>
-            <h1 id="patient-heading">{{ portal_patient.display_name | default("Alex Johnson") }}</h1>
+            <h1 id="patient-heading">{{ account_profile.display_name | default("Alex Johnson") }}</h1>
             <p class="lead">Appointments, watched stories, and joined circles in one clean workspace.</p>
-            <p class="subcopy">Built like a modern app dashboard: quick to scan, easy to act from, and focused on the things you actually use.</p>
+            <p class="subcopy">{{ account_profile.bio or "Built like a modern app dashboard: quick to scan, easy to act from, and focused on the things you actually use." }}</p>
           </div>
 
         <div class="patient-dashboard-actions">
@@ -100,6 +113,54 @@
     </article>
 
     <section class="patient-dashboard-layout">
+      <article class="surface dashboard-panel patient-dashboard-panel profile-editor-card" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Profile</p>
+            <h2>Your profile</h2>
+          </div>
+        </div>
+
+        <div class="profile-editor-shell">
+          <div class="profile-editor-preview">
+            <div class="dashboard-profile-avatar dashboard-profile-avatar-large">
+              {% if account_profile.avatar_image %}
+                <img src="{{ url_for('static', filename=account_profile.avatar_image) }}" alt="{{ account_profile.display_name }} profile picture" />
+              {% else %}
+                <span>{{ account_profile.avatar or "🙂" }}</span>
+              {% endif %}
+            </div>
+            <strong>{{ account_profile.display_name }}</strong>
+            <span class="meta-label">{{ account_profile.headline or "Patient Portal" }}</span>
+            <p>{{ account_profile.bio or "Share a short bio so your care team and support network know how to meet you." }}</p>
+            <small>{{ account_profile.location or "Add your city or context" }}</small>
+          </div>
+
+          <form class="dashboard-form profile-editor-form" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="dashboard_action" value="update_profile" />
+            <div class="profile-editor-grid">
+              <label><span>Name</span><input type="text" name="display_name" maxlength="80" value="{{ account_profile.display_name }}" required /></label>
+              <label><span>Headline</span><input type="text" name="headline" maxlength="90" value="{{ account_profile.headline }}" placeholder="Patient Portal" /></label>
+            </div>
+            <div class="profile-editor-grid">
+              <label><span>Location</span><input type="text" name="location" maxlength="80" value="{{ account_profile.location }}" placeholder="Kathmandu" /></label>
+              <label><span>Emoji fallback</span><input type="text" name="avatar" maxlength="12" value="{{ account_profile.avatar }}" placeholder="🙂" /></label>
+            </div>
+            <label>
+              <span>Profile picture</span>
+              <input type="file" name="avatar_image" accept=".png,.jpg,.jpeg,.webp,.gif" />
+            </label>
+            <label>
+              <span>Bio</span>
+              <textarea name="bio" rows="4" maxlength="280" placeholder="Tell your doctor and support circles a little about you.">{{ account_profile.bio }}</textarea>
+            </label>
+            <div class="button-group dashboard-button-group">
+              <button class="btn btn-primary" type="submit">Save profile</button>
+            </div>
+          </form>
+        </div>
+      </article>
+
       <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-appointments" data-reveal>
         <div class="dashboard-section-head">
           <div>
