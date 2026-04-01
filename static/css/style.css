@@ -5835,11 +5835,21 @@ code {
   margin: 0;
 }
 
-.page-ai-agent .ai-agent-workspace {
+.page-ai-agent .ai-agent-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.16fr) 360px;
   gap: 24px;
   align-items: start;
+}
+
+.page-ai-agent .ai-agent-main-column {
+  display: grid;
+  gap: 24px;
+}
+
+.page-ai-agent .ai-agent-info-card {
+  position: sticky;
+  top: 98px;
 }
 
 .page-ai-agent .ai-agent-form {
@@ -5938,6 +5948,13 @@ code {
   color: var(--muted-strong);
 }
 
+.page-ai-agent .ai-agent-results {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
 .page-ai-agent .ai-agent-results .notice-banner {
   padding: 14px 16px;
   border-radius: 20px;
@@ -5994,8 +6011,14 @@ code {
 
 @media (max-width: 1180px) {
   .page-ai-agent .ai-agent-hero,
-  .page-ai-agent .ai-agent-workspace {
+  .page-ai-agent .ai-agent-layout,
+  .page-ai-agent .ai-agent-results {
     grid-template-columns: 1fr;
+  }
+
+  .page-ai-agent .ai-agent-info-card {
+    position: static;
+    top: auto;
   }
 }
 

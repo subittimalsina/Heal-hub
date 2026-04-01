@@ -30,47 +30,125 @@
     </aside>
   </section>
 
-  <section class="ai-agent-workspace" data-reveal>
-    <article class="surface dashboard-panel ai-agent-form-card">
-      <div class="dashboard-section-head">
-        <div>
-          <p class="eyebrow">Symptom input</p>
-          <h2>Describe what you are noticing</h2>
-        </div>
-        <span class="status-chip status-neutral" data-ai-agent-count>{{ symptom_text|length }} chars</span>
-      </div>
-
-      <form class="auth-form ai-agent-form" method="post">
-        <label for="ai-agent-symptoms">
-          <span>Symptoms</span>
-          <textarea
-            id="ai-agent-symptoms"
-            name="symptoms"
-            rows="5"
-            maxlength="420"
-            placeholder="Try: chest pain, shortness of breath, fever, cough"
-            data-ai-agent-input
-          >{{ symptom_text }}</textarea>
-        </label>
-
-        <div class="ai-agent-quick-prompts" aria-label="Quick symptom templates">
-          <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="chest pain, shortness of breath, dizziness">
-            Cardio warning set
-          </button>
-          <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="fever, cough, sore throat, body ache">
-            Infection pattern set
-          </button>
-          <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="mental distress, insomnia, low appetite, fatigue">
-            Mental strain set
-          </button>
+  <section class="ai-agent-layout" data-reveal>
+    <div class="ai-agent-main-column">
+      <article class="surface dashboard-panel ai-agent-form-card">
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Symptom input</p>
+            <h2>Describe what you are noticing</h2>
+          </div>
+          <span class="status-chip status-neutral" data-ai-agent-count>{{ symptom_text|length }} chars</span>
         </div>
 
-        <div class="button-group ai-agent-actions">
-          <button class="btn btn-primary" type="submit">Analyze Symptoms</button>
-          <button class="btn btn-ghost" type="button" data-ai-agent-clear>Clear</button>
-        </div>
-      </form>
-    </article>
+        <form class="auth-form ai-agent-form" method="post">
+          <label for="ai-agent-symptoms">
+            <span>Symptoms</span>
+            <textarea
+              id="ai-agent-symptoms"
+              name="symptoms"
+              rows="5"
+              maxlength="420"
+              placeholder="Try: chest pain, shortness of breath, fever, cough"
+              data-ai-agent-input
+            >{{ symptom_text }}</textarea>
+          </label>
+
+          <div class="ai-agent-quick-prompts" aria-label="Quick symptom templates">
+            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="chest pain, shortness of breath, dizziness">
+              Cardio warning set
+            </button>
+            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="fever, cough, sore throat, body ache">
+              Infection pattern set
+            </button>
+            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="mental distress, insomnia, low appetite, fatigue">
+              Mental strain set
+            </button>
+          </div>
+
+          <div class="button-group ai-agent-actions">
+            <button class="btn btn-primary" type="submit">Analyze Symptoms</button>
+            <button class="btn btn-ghost" type="button" data-ai-agent-clear>Clear</button>
+          </div>
+        </form>
+      </article>
+
+      {% if agent_result %}
+        {% set urgency_text = agent_result.summary.urgency|lower %}
+        {% if 'rapid' in urgency_text %}
+          {% set urgency_tone = 'status-critical' %}
+        {% elif 'prompt' in urgency_text %}
+          {% set urgency_tone = 'status-warning' %}
+        {% elif 'supportive' in urgency_text or 'routine' in urgency_text %}
+          {% set urgency_tone = 'status-stable' %}
+        {% else %}
+          {% set urgency_tone = 'status-neutral' %}
+        {% endif %}
+
+        <section class="ai-agent-results" data-reveal>
+          <article class="surface dashboard-panel ai-agent-result-main">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="eyebrow">AI result</p>
+                <h2>{{ agent_result.headline }}</h2>
+              </div>
+            </div>
+
+            <div class="notice-banner {{ urgency_tone }}">
+              <strong>Urgency: {{ agent_result.summary.urgency }}</strong>
+              <span class="status-chip {{ urgency_tone }}">{{ agent_result.summary.track|title }}</span>
+            </div>
+
+            <ul class="stack-list ai-agent-guidance-list">
+              {% for item in agent_result.summary.guidance %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+
+            <p class="subcopy">{{ agent_result.summary.disclaimer }}</p>
+          </article>
+
+          <article class="surface dashboard-panel ai-agent-result-side">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="eyebrow">Captured symptoms</p>
+                <h2>Input summary</h2>
+              </div>
+            </div>
+
+            <div class="ai-agent-chip-cloud">
+              {% for item in agent_result.symptoms %}
+                <span class="story-filter-chip small">{{ item }}</span>
+              {% endfor %}
+            </div>
+
+            <div class="ai-agent-mini-stats">
+              <div>
+                <small>Symptoms captured</small>
+                <strong>{{ agent_result.symptoms|length }}</strong>
+              </div>
+              <div>
+                <small>Priority track</small>
+                <strong>{{ agent_result.summary.track|title }}</strong>
+              </div>
+            </div>
+          </article>
+        </section>
+      {% else %}
+        <section class="surface ai-agent-empty" data-reveal>
+          <p class="eyebrow">Result panel</p>
+          <h2>Your triage summary will appear here after analysis.</h2>
+          <p class="subcopy">
+            Submit symptom notes to view urgency, broad track classification, and next-step recommendations.
+          </p>
+          <ul class="stack-list">
+            <li>Be specific: list key symptoms and combinations.</li>
+            <li>Include mental, physical, or respiratory signs together when relevant.</li>
+            <li>Use this output to support clinical conversation and escalation decisions.</li>
+          </ul>
+        </section>
+      {% endif %}
+    </div>
 
     <article class="surface dashboard-panel ai-agent-info-card">
       <p class="eyebrow">How it works</p>
@@ -106,82 +184,6 @@
       </div>
     </article>
   </section>
-
-  {% if agent_result %}
-    {% set urgency_text = agent_result.summary.urgency|lower %}
-    {% if 'rapid' in urgency_text %}
-      {% set urgency_tone = 'status-critical' %}
-    {% elif 'prompt' in urgency_text %}
-      {% set urgency_tone = 'status-warning' %}
-    {% elif 'supportive' in urgency_text or 'routine' in urgency_text %}
-      {% set urgency_tone = 'status-stable' %}
-    {% else %}
-      {% set urgency_tone = 'status-neutral' %}
-    {% endif %}
-
-    <section class="ai-agent-results dashboard-support-grid" data-reveal>
-      <article class="surface dashboard-panel ai-agent-result-main">
-        <div class="dashboard-section-head">
-          <div>
-            <p class="eyebrow">AI result</p>
-            <h2>{{ agent_result.headline }}</h2>
-          </div>
-        </div>
-
-        <div class="notice-banner {{ urgency_tone }}">
-          <strong>Urgency: {{ agent_result.summary.urgency }}</strong>
-          <span class="status-chip {{ urgency_tone }}">{{ agent_result.summary.track|title }}</span>
-        </div>
-
-        <ul class="stack-list ai-agent-guidance-list">
-          {% for item in agent_result.summary.guidance %}
-            <li>{{ item }}</li>
-          {% endfor %}
-        </ul>
-
-        <p class="subcopy">{{ agent_result.summary.disclaimer }}</p>
-      </article>
-
-      <article class="surface dashboard-panel ai-agent-result-side">
-        <div class="dashboard-section-head">
-          <div>
-            <p class="eyebrow">Captured symptoms</p>
-            <h2>Input summary</h2>
-          </div>
-        </div>
-
-        <div class="ai-agent-chip-cloud">
-          {% for item in agent_result.symptoms %}
-            <span class="story-filter-chip small">{{ item }}</span>
-          {% endfor %}
-        </div>
-
-        <div class="ai-agent-mini-stats">
-          <div>
-            <small>Symptoms captured</small>
-            <strong>{{ agent_result.symptoms|length }}</strong>
-          </div>
-          <div>
-            <small>Priority track</small>
-            <strong>{{ agent_result.summary.track|title }}</strong>
-          </div>
-        </div>
-      </article>
-    </section>
-  {% else %}
-    <section class="surface ai-agent-empty" data-reveal>
-      <p class="eyebrow">Result panel</p>
-      <h2>Your triage summary will appear here after analysis.</h2>
-      <p class="subcopy">
-        Submit symptom notes to view urgency, broad track classification, and next-step recommendations.
-      </p>
-      <ul class="stack-list">
-        <li>Be specific: list key symptoms and combinations.</li>
-        <li>Include mental, physical, or respiratory signs together when relevant.</li>
-        <li>Use this output to support clinical conversation and escalation decisions.</li>
-      </ul>
-    </section>
-  {% endif %}
 {% endblock %}
 
 {% block scripts %}
