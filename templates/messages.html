@@ -5,7 +5,7 @@
     <aside class="surface chat-sidebar">
       <header class="chat-sidebar-head">
         <h2>Chats</h2>
-        <button class="chat-icon-btn" type="button" title="New chat">+</button>
+        <a class="chat-icon-btn" href="{{ url_for('browse_patients') }}" title="New chat" aria-label="Start new chat">+</a>
       </header>
 
       <div class="chat-search-wrap">
@@ -74,8 +74,8 @@
             </div>
           </div>
           <div class="chat-main-actions">
-            <button type="button" class="chat-icon-btn" title="Audio call">Call</button>
-            <button type="button" class="chat-icon-btn" title="Video call">Video</button>
+            <button type="button" class="chat-icon-btn" data-call-kind="audio" title="Audio call">Call</button>
+            <button type="button" class="chat-icon-btn" data-call-kind="video" title="Video call">Video</button>
           </div>
         </header>
 
@@ -88,7 +88,12 @@
               {% set stream_ns.last_date = msg_date %}
             {% endif %}
             {% set mine = message.from_user == current_user.username %}
-            <article class="chat-msg {% if mine %}mine{% else %}theirs{% endif %}">
+            <article
+              class="chat-msg {% if mine %}mine{% else %}theirs{% endif %}"
+              data-message-id="{{ message.id }}"
+              data-message-from="{{ message.from_user }}"
+              data-message-time="{{ message.timestamp }}"
+            >
               {% if not mine %}
                 <span class="chat-sender">{{ message.from_display }}</span>
               {% endif %}
@@ -133,8 +138,8 @@
         <a class="btn btn-secondary chat-profile-link" href="{{ url_for('view_patient_profile', username=selected_conversation.partner_username) }}">View profile</a>
 
         <div class="chat-info-actions">
-          <button type="button" class="chat-info-btn">Mute</button>
-          <button type="button" class="chat-info-btn">Search</button>
+          <button type="button" class="chat-info-btn" data-chat-mute>Mute</button>
+          <button type="button" class="chat-info-btn" data-chat-search-thread>Search</button>
         </div>
 
         <div class="chat-info-block">
@@ -164,10 +169,10 @@
         </div>
 
         <div class="chat-info-list">
-          <button type="button" class="chat-info-row"><span>Chat info</span><span>&gt;</span></button>
-          <button type="button" class="chat-info-row"><span>Customize chat</span><span>&gt;</span></button>
-          <button type="button" class="chat-info-row"><span>Shared media</span><span>&gt;</span></button>
-          <button type="button" class="chat-info-row"><span>Privacy & support</span><span>&gt;</span></button>
+          <button type="button" class="chat-info-row" data-chat-action="info"><span>Chat info</span><span>&gt;</span></button>
+          <button type="button" class="chat-info-row" data-chat-action="customize"><span>Customize chat</span><span>&gt;</span></button>
+          <button type="button" class="chat-info-row" data-chat-action="media"><span>Shared media</span><span>&gt;</span></button>
+          <button type="button" class="chat-info-row" data-chat-action="privacy"><span>Privacy & support</span><span>&gt;</span></button>
         </div>
       {% else %}
         <div class="chat-empty-main">
@@ -177,6 +182,37 @@
       {% endif %}
     </aside>
   </div>
+
+  {% if selected_conversation %}
+    {% set partner = selected_conversation.partner_profile or {} %}
+    <div class="chat-call-overlay" id="chatCallOverlay" hidden>
+      <div class="chat-call-modal" role="dialog" aria-modal="true" aria-labelledby="chatCallTitle">
+        <header class="chat-call-head">
+          <div>
+            <p class="eyebrow" id="chatCallMode">Call</p>
+            <h3 id="chatCallTitle">{{ partner.display_name or selected_conversation.partner_username }}</h3>
+            <small id="chatCallTimer">00:00</small>
+          </div>
+          <button type="button" class="chat-icon-btn" id="chatCallClose" aria-label="Close call">×</button>
+        </header>
+
+        <div class="chat-call-stage" id="chatCallStage">
+          <div class="chat-call-peer">
+            <span class="chat-avatar xlarge" id="chatCallPeerAvatar">{{ partner.avatar or "U" }}</span>
+            <strong>{{ partner.display_name or selected_conversation.partner_username }}</strong>
+            <p id="chatCallStatus">Connecting...</p>
+          </div>
+          <video id="chatCallLocalVideo" autoplay playsinline muted></video>
+        </div>
+
+        <div class="chat-call-actions">
+          <button type="button" class="chat-info-btn" id="chatCallMic">Mute mic</button>
+          <button type="button" class="chat-info-btn" id="chatCallCamera">Turn camera off</button>
+          <button type="button" class="chat-info-btn chat-call-end" id="chatCallEnd">End call</button>
+        </div>
+      </div>
+    </div>
+  {% endif %}
 
   <style>
     .chat-shell {
@@ -224,6 +260,7 @@
       padding: 0 10px;
       font-weight: 700;
       cursor: pointer;
+      text-decoration: none;
     }
 
     .chat-search-wrap {
@@ -514,6 +551,11 @@
       color: var(--text-strong);
     }
 
+    .chat-bubble.chat-bubble-match {
+      outline: 2px solid rgba(238, 155, 60, 0.42);
+      box-shadow: 0 0 0 4px rgba(238, 155, 60, 0.14);
+    }
+
     .chat-meta {
       font-size: 0.7rem;
       color: var(--muted);
@@ -692,6 +734,121 @@
       font-weight: 600;
     }
 
+    .chat-call-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      background: rgba(11, 23, 44, 0.48);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+
+    .chat-call-modal {
+      width: min(860px, calc(100vw - 32px));
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      border-radius: 22px;
+      border: 1px solid rgba(17, 62, 103, 0.2);
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 36px 70px rgba(5, 20, 42, 0.36);
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .chat-call-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .chat-call-head h3 {
+      margin: 4px 0;
+      font-size: 1.4rem;
+    }
+
+    .chat-call-head small {
+      color: var(--muted);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.82rem;
+    }
+
+    .chat-call-stage {
+      border-radius: 18px;
+      border: 1px solid rgba(17, 62, 103, 0.14);
+      overflow: hidden;
+      min-height: min(62vh, 420px);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(31, 116, 183, 0.22), transparent 32%),
+        radial-gradient(circle at 80% 80%, rgba(22, 132, 120, 0.2), transparent 30%),
+        linear-gradient(165deg, rgba(10, 27, 52, 0.98), rgba(12, 36, 70, 0.96));
+      position: relative;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      padding: 14px;
+    }
+
+    .chat-call-stage video {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      width: min(36vw, 250px);
+      max-height: 180px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(0, 0, 0, 0.45);
+      object-fit: cover;
+      display: none;
+    }
+
+    .chat-call-stage.video-ready video {
+      display: block;
+    }
+
+    .chat-call-peer {
+      text-align: center;
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+    }
+
+    .chat-call-peer strong {
+      font-size: 1.12rem;
+      color: #fff;
+    }
+
+    .chat-call-peer p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 0.9rem;
+    }
+
+    .chat-call-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .chat-call-actions .chat-info-btn {
+      min-height: 42px;
+      padding: 0 14px;
+    }
+
+    .chat-call-end {
+      background: rgba(195, 93, 104, 0.12);
+      border-color: rgba(195, 93, 104, 0.26);
+      color: #8a2f3b;
+    }
+
+    .chat-call-end:hover {
+      background: rgba(195, 93, 104, 0.18);
+    }
+
     @media (max-width: 1220px) {
       .chat-shell {
         grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
@@ -723,11 +880,16 @@
       .chat-msg {
         max-width: 90%;
       }
+
+      .chat-call-stage video {
+        width: min(46vw, 180px);
+      }
     }
   </style>
 
   <script>
     (() => {
+      const sessionUser = window.HealHubSession?.user?.username || "";
       const searchInput = document.getElementById("chatSearch");
       const threadList = document.getElementById("chatThreadList");
       const tabs = Array.from(document.querySelectorAll(".chat-tab"));
@@ -736,10 +898,237 @@
       const composer = document.getElementById("chatComposer");
       const input = document.getElementById("chatInput");
       const sendBtn = document.getElementById("chatSendBtn");
+      const activeTo = composer?.dataset.to || "";
+      const threadSearchBtn = document.querySelector("[data-chat-search-thread]");
+      const muteBtn = document.querySelector("[data-chat-mute]");
+      const infoActionButtons = Array.from(document.querySelectorAll("[data-chat-action]"));
+      const callButtons = Array.from(document.querySelectorAll("[data-call-kind]"));
+      const callOverlay = document.getElementById("chatCallOverlay");
+      const callStage = document.getElementById("chatCallStage");
+      const callStatus = document.getElementById("chatCallStatus");
+      const callMode = document.getElementById("chatCallMode");
+      const callTimer = document.getElementById("chatCallTimer");
+      const callLocalVideo = document.getElementById("chatCallLocalVideo");
+      const callMicBtn = document.getElementById("chatCallMic");
+      const callCameraBtn = document.getElementById("chatCallCamera");
+      const callCloseBtn = document.getElementById("chatCallClose");
+      const callEndBtn = document.getElementById("chatCallEnd");
+      const pollIntervalMs = 3500;
+      let pollTimer = null;
+      const callState = {
+        kind: "",
+        stream: null,
+        timer: null,
+        startedAt: 0,
+      };
 
-      function scrollToBottom() {
+      function nearBottom(node) {
+        if (!node) return true;
+        return node.scrollHeight - node.scrollTop - node.clientHeight < 64;
+      }
+
+      function scrollToBottom(force = false) {
         if (!stream) return;
-        stream.scrollTop = stream.scrollHeight;
+        if (force || nearBottom(stream)) {
+          stream.scrollTop = stream.scrollHeight;
+        }
+      }
+
+      function dayLabel(timestamp) {
+        return String(timestamp || "").slice(0, 10);
+      }
+
+      function clearBubbleHighlights() {
+        stream?.querySelectorAll(".chat-bubble-match").forEach((item) => item.classList.remove("chat-bubble-match"));
+      }
+
+      function highlightThreadMatches(query) {
+        clearBubbleHighlights();
+        if (!stream || !query) return 0;
+        const needle = query.toLowerCase();
+        const matches = [];
+        stream.querySelectorAll(".chat-bubble").forEach((bubble) => {
+          if ((bubble.textContent || "").toLowerCase().includes(needle)) {
+            bubble.classList.add("chat-bubble-match");
+            matches.push(bubble);
+          }
+        });
+        if (matches[0]) {
+          matches[0].scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        return matches.length;
+      }
+
+      function renderMessages(messages, preserveScroll = true) {
+        if (!stream) return;
+        const keepPosition = preserveScroll ? nearBottom(stream) : true;
+        stream.innerHTML = "";
+        let lastDate = "";
+        messages.forEach((message) => {
+          const msgDate = dayLabel(message.timestamp);
+          if (msgDate && msgDate !== lastDate) {
+            const sep = document.createElement("div");
+            sep.className = "chat-day-sep";
+            const sepLabel = document.createElement("span");
+            sepLabel.textContent = msgDate;
+            sep.appendChild(sepLabel);
+            stream.appendChild(sep);
+            lastDate = msgDate;
+          }
+
+          const mine = message.from_user === sessionUser;
+          const article = document.createElement("article");
+          article.className = `chat-msg ${mine ? "mine" : "theirs"}`;
+          article.dataset.messageId = message.id || "";
+          article.dataset.messageFrom = message.from_user || "";
+          article.dataset.messageTime = message.timestamp || "";
+
+          if (!mine) {
+            const sender = document.createElement("span");
+            sender.className = "chat-sender";
+            sender.textContent = message.from_display || message.from_user || "Partner";
+            article.appendChild(sender);
+          }
+
+          const bubble = document.createElement("div");
+          bubble.className = "chat-bubble";
+          bubble.textContent = message.content || "";
+          article.appendChild(bubble);
+
+          const meta = document.createElement("time");
+          meta.className = "chat-meta";
+          meta.textContent = message.timestamp || "now";
+          article.appendChild(meta);
+
+          stream.appendChild(article);
+        });
+
+        if (keepPosition) {
+          scrollToBottom(true);
+        }
+      }
+
+      function updateActiveThreadMeta(messages) {
+        const activeThread = threadList?.querySelector(`.chat-thread[data-username="${activeTo}"]`);
+        if (!activeThread || !messages.length) return;
+        const latest = messages[messages.length - 1];
+        const preview = activeThread.querySelector(".chat-thread-preview");
+        const stamp = activeThread.querySelector(".chat-thread-time");
+        if (preview) {
+          const prefix = latest.from_user === sessionUser ? "You:" : `${latest.from_display || latest.from_user}:`;
+          preview.textContent = `${prefix} ${latest.content || ""}`.trim();
+        }
+        if (stamp) {
+          stamp.textContent = latest.timestamp || "now";
+        }
+        const unread = activeThread.querySelector(".chat-unread");
+        if (unread) unread.remove();
+      }
+
+      async function refreshActiveThread(preserveScroll = true) {
+        if (!activeTo || !stream) return;
+        try {
+          const response = await fetch(`/api/messages-thread?user=${encodeURIComponent(activeTo)}`);
+          const payload = await response.json();
+          if (!response.ok || !payload.success) return;
+          const messages = Array.isArray(payload.messages) ? payload.messages : [];
+          renderMessages(messages, preserveScroll);
+          updateActiveThreadMeta(messages);
+        } catch (_error) {
+          // no-op on polling failure
+        }
+      }
+
+      function mutedStorageKey() {
+        return `healhub.mutedChats.${sessionUser || "guest"}`;
+      }
+
+      function getMutedChats() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(mutedStorageKey()) || "[]");
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_error) {
+          return [];
+        }
+      }
+
+      function setMutedChats(items) {
+        localStorage.setItem(mutedStorageKey(), JSON.stringify(items));
+      }
+
+      function updateMuteButtonLabel() {
+        if (!muteBtn || !activeTo) return;
+        const muted = getMutedChats();
+        muteBtn.textContent = muted.includes(activeTo) ? "Unmute" : "Mute";
+      }
+
+      function stopCallTracks() {
+        if (callState.stream) {
+          callState.stream.getTracks().forEach((track) => track.stop());
+          callState.stream = null;
+        }
+      }
+
+      function formatDuration(ms) {
+        const total = Math.max(0, Math.floor(ms / 1000));
+        const mins = String(Math.floor(total / 60)).padStart(2, "0");
+        const secs = String(total % 60).padStart(2, "0");
+        return `${mins}:${secs}`;
+      }
+
+      function closeCallOverlay() {
+        stopCallTracks();
+        if (callState.timer) {
+          clearInterval(callState.timer);
+          callState.timer = null;
+        }
+        if (callOverlay) callOverlay.hidden = true;
+        document.body.style.overflow = "";
+        if (callLocalVideo) callLocalVideo.srcObject = null;
+        callStage?.classList.remove("video-ready");
+        if (callStatus) callStatus.textContent = "Connecting...";
+        if (callTimer) callTimer.textContent = "00:00";
+        if (callMicBtn) callMicBtn.textContent = "Mute mic";
+        if (callCameraBtn) callCameraBtn.textContent = "Turn camera off";
+      }
+
+      async function openCall(kind) {
+        if (!callOverlay) return;
+        callState.kind = kind;
+        callState.startedAt = Date.now();
+        if (callMode) callMode.textContent = kind === "video" ? "Video call" : "Audio call";
+        if (callStatus) callStatus.textContent = "Connecting...";
+        if (callMicBtn) callMicBtn.textContent = "Mute mic";
+        if (callCameraBtn) callCameraBtn.textContent = "Turn camera off";
+        if (callCameraBtn) callCameraBtn.hidden = kind !== "video";
+        callStage?.classList.remove("video-ready");
+        callOverlay.hidden = false;
+        document.body.style.overflow = "hidden";
+
+        if (callState.timer) clearInterval(callState.timer);
+        callState.timer = window.setInterval(() => {
+          if (callTimer) callTimer.textContent = formatDuration(Date.now() - callState.startedAt);
+        }, 1000);
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+          if (callStatus) callStatus.textContent = "Camera/mic not supported in this browser.";
+          return;
+        }
+
+        try {
+          stopCallTracks();
+          const constraints = kind === "video" ? { audio: true, video: true } : { audio: true, video: false };
+          callState.stream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (callLocalVideo) callLocalVideo.srcObject = callState.stream;
+          if (kind === "video" && callState.stream.getVideoTracks().length > 0) {
+            callStage?.classList.add("video-ready");
+          }
+          if (callStatus) {
+            callStatus.textContent = kind === "video" ? "Video connected (demo mode)." : "Audio connected (demo mode).";
+          }
+        } catch (_error) {
+          if (callStatus) callStatus.textContent = "Could not access camera/mic. Check browser permissions.";
+        }
       }
 
       function applyFilters() {
@@ -792,51 +1181,8 @@
             if (!response.ok || !payload.success) {
               throw new Error(payload.message || "Unable to send message.");
             }
-
-            const item = payload.message_obj || {
-              content,
-              timestamp: "now",
-            };
-
-            const msgDate = String(item.timestamp || "").slice(0, 10);
-            if (msgDate && stream) {
-              const separators = Array.from(stream.querySelectorAll(".chat-day-sep span"));
-              const lastLabel = separators.length ? separators[separators.length - 1].textContent : "";
-              if (lastLabel !== msgDate) {
-                const sep = document.createElement("div");
-                sep.className = "chat-day-sep";
-                const label = document.createElement("span");
-                label.textContent = msgDate;
-                sep.appendChild(label);
-                stream.appendChild(sep);
-              }
-            }
-
-            const node = document.createElement("article");
-            node.className = "chat-msg mine";
-
-            const bubble = document.createElement("div");
-            bubble.className = "chat-bubble";
-            bubble.textContent = item.content || content;
-
-            const time = document.createElement("time");
-            time.className = "chat-meta";
-            time.textContent = item.timestamp || "now";
-
-            node.appendChild(bubble);
-            node.appendChild(time);
-            stream?.appendChild(node);
-
-            const activeThread = threadList?.querySelector(`.chat-thread[data-username="${toUsername}"]`);
-            if (activeThread) {
-              const preview = activeThread.querySelector(".chat-thread-preview");
-              const stamp = activeThread.querySelector(".chat-thread-time");
-              if (preview) preview.textContent = `You: ${item.content || content}`;
-              if (stamp) stamp.textContent = item.timestamp || "now";
-            }
-
             input.value = "";
-            scrollToBottom();
+            await refreshActiveThread(false);
           } catch (error) {
             alert(error.message || "Could not send message.");
           } finally {
@@ -845,8 +1191,101 @@
         });
       }
 
-      scrollToBottom();
+      if (threadSearchBtn) {
+        threadSearchBtn.addEventListener("click", () => {
+          const query = window.prompt("Search this chat for:", "");
+          if (query === null) return;
+          const matches = highlightThreadMatches(query.trim());
+          if (query.trim() && matches === 0) {
+            alert("No matching messages found.");
+          }
+        });
+      }
+
+      if (muteBtn && activeTo) {
+        updateMuteButtonLabel();
+        muteBtn.addEventListener("click", () => {
+          const muted = getMutedChats();
+          const next = muted.includes(activeTo) ? muted.filter((item) => item !== activeTo) : [...muted, activeTo];
+          setMutedChats(next);
+          updateMuteButtonLabel();
+        });
+      }
+
+      infoActionButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const action = button.dataset.chatAction;
+          if (action === "media") {
+            alert("Shared media view is ready for attachments once file upload is added.");
+            return;
+          }
+          if (action === "privacy") {
+            alert("Privacy options: mute, block, and report controls are available in this chat panel.");
+            return;
+          }
+          if (action === "customize") {
+            alert("Chat customization is currently in demo mode.");
+            return;
+          }
+          if (action === "info") {
+            alert("Chat info includes shared circles, interests, and profile details.");
+          }
+        });
+      });
+
+      callButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const kind = button.dataset.callKind === "audio" ? "audio" : "video";
+          openCall(kind);
+        });
+      });
+
+      callCloseBtn?.addEventListener("click", closeCallOverlay);
+      callEndBtn?.addEventListener("click", closeCallOverlay);
+      callOverlay?.addEventListener("click", (event) => {
+        if (event.target === callOverlay) closeCallOverlay();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && callOverlay && !callOverlay.hidden) {
+          closeCallOverlay();
+        }
+      });
+
+      callMicBtn?.addEventListener("click", () => {
+        if (!callState.stream) return;
+        const tracks = callState.stream.getAudioTracks();
+        if (!tracks.length) return;
+        const nextEnabled = !tracks[0].enabled;
+        tracks.forEach((track) => {
+          track.enabled = nextEnabled;
+        });
+        callMicBtn.textContent = nextEnabled ? "Mute mic" : "Unmute mic";
+      });
+
+      callCameraBtn?.addEventListener("click", () => {
+        if (!callState.stream) return;
+        const tracks = callState.stream.getVideoTracks();
+        if (!tracks.length) return;
+        const nextEnabled = !tracks[0].enabled;
+        tracks.forEach((track) => {
+          track.enabled = nextEnabled;
+        });
+        callCameraBtn.textContent = nextEnabled ? "Turn camera off" : "Turn camera on";
+      });
+
+      scrollToBottom(true);
       applyFilters();
+      if (activeTo && stream) {
+        refreshActiveThread(false);
+        pollTimer = window.setInterval(() => {
+          refreshActiveThread(true);
+        }, pollIntervalMs);
+      }
+
+      window.addEventListener("beforeunload", () => {
+        if (pollTimer) clearInterval(pollTimer);
+        closeCallOverlay();
+      });
     })();
   </script>
 {% endblock %}

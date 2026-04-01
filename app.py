@@ -4173,6 +4173,48 @@ def send_message() -> Any:
     })
 
 
+@app.get("/api/messages-thread")
+@login_required
+def get_messages_thread() -> Any:
+    """Fetch one conversation thread for the current user."""
+    current_user = session.get("user", {})
+    current_username = current_user.get("username", "patient")
+    partner_username = request.args.get("user", "").strip()
+
+    if not partner_username:
+        return jsonify({"success": False, "message": "Missing conversation user."}), 400
+
+    if partner_username == current_username:
+        return jsonify({"success": False, "message": "Cannot open a thread with yourself."}), 400
+
+    if partner_username not in PATIENT_PROFILES:
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    my_connections = USER_CONNECTIONS.get(current_username, {})
+    if partner_username not in my_connections.get("friends", []):
+        return jsonify({"success": False, "message": "You must be connected to view this conversation."}), 403
+
+    thread_messages = sorted([
+        msg for msg in MESSAGES_DATA
+        if (
+            msg.get("from_user") == current_username
+            and msg.get("to_user") == partner_username
+        ) or (
+            msg.get("from_user") == partner_username
+            and msg.get("to_user") == current_username
+        )
+    ], key=lambda item: item.get("timestamp", ""))
+
+    for msg in thread_messages:
+        if msg.get("to_user") == current_username and not msg.get("read"):
+            msg["read"] = True
+
+    return jsonify({
+        "success": True,
+        "messages": thread_messages,
+    })
+
+
 @app.get("/messages")
 @login_required
 def view_messages() -> str:
@@ -4206,6 +4248,21 @@ def view_messages() -> str:
         convo["messages"] = sorted(convo["messages"], key=lambda item: item.get("timestamp", ""))
         convo["latest_message"] = convo["messages"][-1] if convo["messages"] else None
 
+    my_connections = USER_CONNECTIONS.get(current_username, {})
+    if (
+        requested_partner
+        and requested_partner not in conversations
+        and requested_partner in my_connections.get("friends", [])
+        and requested_partner in PATIENT_PROFILES
+    ):
+        conversations[requested_partner] = {
+            "partner_username": requested_partner,
+            "partner_profile": PATIENT_PROFILES.get(requested_partner),
+            "messages": [],
+            "unread_count": 0,
+            "latest_message": None,
+        }
+
     conversation_items = sorted(
         conversations.values(),
         key=lambda convo: (convo.get("latest_message") or {}).get("timestamp", ""),
@@ -4229,9 +4286,13 @@ def view_messages() -> str:
         groups_lookup[group_id]["name"] for group_id in shared_group_ids if group_id in groups_lookup
     ])
 
-    for msg in my_messages:
-        if msg.get("to_user") == current_username:
-            msg["read"] = True
+    if selected_partner:
+        for msg in my_messages:
+            if (
+                msg.get("to_user") == current_username
+                and msg.get("from_user") == selected_partner
+            ):
+                msg["read"] = True
 
     return render_template(
         "messages.html",
