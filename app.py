@@ -2967,6 +2967,100 @@ PATIENT_PROFILES: dict[str, dict[str, Any]] = {
     },
 }
 
+
+def therapist_profile_for_chat(therapist_id: str) -> dict[str, Any] | None:
+    therapist = next((item for item in THERAPISTS_DATA if item.get("id") == therapist_id), None)
+    if not therapist:
+        return None
+
+    return {
+        "username": therapist["id"],
+        "display_name": therapist["name"],
+        "avatar": therapist.get("avatar_emoji", "🩺"),
+        "bio": therapist.get("bio", "Therapist on the Heal Hub care team."),
+        "location": therapist.get("specialty", "Therapist"),
+        "interests": therapist.get("tags", []),
+        "joined_communities": [],
+        "connection_status": "Therapist",
+        "member_since": "",
+        "role": "doctor",
+        "profile_href": url_for("therapists_page"),
+        "profile_link_label": "View therapists",
+    }
+
+
+def doctor_profile_for_chat(username: str) -> dict[str, Any] | None:
+    if username != "doctor" or username not in DEMO_USERS:
+        return None
+
+    user = DEMO_USERS[username]
+    return {
+        "username": username,
+        "display_name": user.get("display_name", "Doctor"),
+        "avatar": "🩺",
+        "bio": "Primary doctor linked to the patient dashboard for follow-ups, care-plan questions, and prescription support.",
+        "location": "Clinical Operations",
+        "interests": ["follow-up care", "medication support", "patient guidance"],
+        "joined_communities": [],
+        "connection_status": "Doctor",
+        "member_since": "",
+        "role": "doctor",
+        "profile_href": "",
+        "profile_link_label": "",
+    }
+
+
+def message_partner_profile(username: str) -> dict[str, Any] | None:
+    patient_profile = PATIENT_PROFILES.get(username)
+    if patient_profile:
+        return {
+            **patient_profile,
+            "role": "patient",
+            "profile_href": url_for("view_patient_profile", username=username),
+            "profile_link_label": "View profile",
+        }
+
+    doctor_profile = doctor_profile_for_chat(username)
+    if doctor_profile:
+        return doctor_profile
+
+    return therapist_profile_for_chat(username)
+
+
+def messageable_partner_usernames(user: dict[str, Any]) -> set[str]:
+    current_username = user.get("username", "")
+    allowed = set(USER_CONNECTIONS.get(current_username, {}).get("friends", []))
+    role = user.get("role", "")
+
+    if role == "patient":
+        portal_patient = portal_patient_for_user(user)
+        doctor_username = str(portal_patient.get("doctor_username", "")).strip()
+        if doctor_username:
+            allowed.add(doctor_username)
+
+        for booking in BOOKINGS_DATA:
+            if booking.get("patient_username") == current_username and booking.get("therapist_id"):
+                allowed.add(str(booking["therapist_id"]).strip())
+
+    if role == "doctor":
+        allowed.update(
+            booking.get("patient_username", "")
+            for booking in BOOKINGS_DATA
+            if booking.get("patient_username")
+        )
+        allowed.update(PORTAL_PATIENTS.keys())
+
+    allowed.discard("")
+    allowed.discard(current_username)
+    return {username for username in allowed if message_partner_profile(username)}
+
+
+def can_message_partner(user: dict[str, Any], partner_username: str) -> bool:
+    cleaned = str(partner_username).strip()
+    if not cleaned or cleaned == user.get("username", ""):
+        return False
+    return cleaned in messageable_partner_usernames(user)
+
 MESSAGES_DATA: list[dict[str, Any]] = [
     {
         "id": "msg-001",
@@ -4135,11 +4229,11 @@ def accept_connection() -> Any:
 @app.post("/api/send-message")
 @login_required
 def send_message() -> Any:
-    """Send a message to another patient."""
+    """Send a message to an allowed patient or doctor conversation partner."""
     current_user = session.get("user", {})
     current_username = current_user.get("username", "patient")
     payload = request.get_json(silent=True) or {}
-    to_username = payload.get("to_username", "")
+    to_username = str(payload.get("to_username", "")).strip()
     content = payload.get("content", "").strip()
 
     if not content:
@@ -4148,12 +4242,11 @@ def send_message() -> Any:
     if to_username == current_username:
         return jsonify({"success": False, "message": "Cannot message yourself."}), 400
 
-    if to_username not in PATIENT_PROFILES:
+    if not message_partner_profile(to_username):
         return jsonify({"success": False, "message": "User not found."}), 404
 
-    my_connections = USER_CONNECTIONS.get(current_username, {})
-    if to_username not in my_connections.get("friends", []):
-        return jsonify({"success": False, "message": "You must be connected to message this user."}), 403
+    if not can_message_partner(current_user, to_username):
+        return jsonify({"success": False, "message": "You do not have messaging access for this user."}), 403
 
     message = {
         "id": f"msg-{uuid4().hex[:8]}",
@@ -4187,12 +4280,11 @@ def get_messages_thread() -> Any:
     if partner_username == current_username:
         return jsonify({"success": False, "message": "Cannot open a thread with yourself."}), 400
 
-    if partner_username not in PATIENT_PROFILES:
+    if not message_partner_profile(partner_username):
         return jsonify({"success": False, "message": "User not found."}), 404
 
-    my_connections = USER_CONNECTIONS.get(current_username, {})
-    if partner_username not in my_connections.get("friends", []):
-        return jsonify({"success": False, "message": "You must be connected to view this conversation."}), 403
+    if not can_message_partner(current_user, partner_username):
+        return jsonify({"success": False, "message": "You do not have access to this conversation."}), 403
 
     thread_messages = sorted([
         msg for msg in MESSAGES_DATA
@@ -4228,11 +4320,12 @@ def view_messages() -> str:
         if msg.get("to_user") == current_username or msg.get("from_user") == current_username
     ]
 
+    allowed_partners = messageable_partner_usernames(current_user)
     conversations: dict[str, dict[str, Any]] = {}
     for msg in sorted(my_messages, key=lambda m: m.get("timestamp", ""), reverse=True):
         partner = msg.get("from_user") if msg.get("to_user") == current_username else msg.get("to_user")
         if partner not in conversations:
-            partner_profile = PATIENT_PROFILES.get(partner)
+            partner_profile = message_partner_profile(partner)
             conversations[partner] = {
                 "partner_username": partner,
                 "partner_profile": partner_profile,
@@ -4248,16 +4341,15 @@ def view_messages() -> str:
         convo["messages"] = sorted(convo["messages"], key=lambda item: item.get("timestamp", ""))
         convo["latest_message"] = convo["messages"][-1] if convo["messages"] else None
 
-    my_connections = USER_CONNECTIONS.get(current_username, {})
     if (
         requested_partner
         and requested_partner not in conversations
-        and requested_partner in my_connections.get("friends", [])
-        and requested_partner in PATIENT_PROFILES
+        and requested_partner in allowed_partners
+        and message_partner_profile(requested_partner)
     ):
         conversations[requested_partner] = {
             "partner_username": requested_partner,
-            "partner_profile": PATIENT_PROFILES.get(requested_partner),
+            "partner_profile": message_partner_profile(requested_partner),
             "messages": [],
             "unread_count": 0,
             "latest_message": None,
@@ -4273,7 +4365,7 @@ def view_messages() -> str:
     if not selected_partner and conversation_items:
         selected_partner = conversation_items[0]["partner_username"]
     selected_conversation = conversations.get(selected_partner)
-    current_profile = PATIENT_PROFILES.get(current_username, {})
+    current_profile = message_partner_profile(current_username) or PATIENT_PROFILES.get(current_username, {})
     selected_profile = (selected_conversation or {}).get("partner_profile", {}) or {}
     shared_interests = sorted(
         set(current_profile.get("interests", [])).intersection(set(selected_profile.get("interests", [])))
@@ -4607,7 +4699,20 @@ def build_patient_dashboard_context(user: dict[str, Any]) -> dict[str, Any]:
         [booking for booking in BOOKINGS_DATA if booking.get("patient_username") == username],
         key=lambda booking: (booking.get("date", ""), booking.get("time", "")),
     )
-    latest_booking = bookings[0] if bookings else None
+    pending_statuses = {"requested", "pending", "awaiting review"}
+    pending_review_bookings = [
+        booking for booking in bookings
+        if str(booking.get("status", "")).strip().lower() in pending_statuses
+    ]
+    upcoming_bookings = [
+        booking for booking in bookings
+        if str(booking.get("status", "")).strip().lower() not in pending_statuses
+    ]
+    latest_booking = upcoming_bookings[0] if upcoming_bookings else bookings[0] if bookings else None
+    doctor_chat_target = (
+        str((latest_booking or {}).get("therapist_id", "")).strip()
+        or str(portal_patient.get("doctor_username", "")).strip()
+    )
     quick_actions = [
         {"label": "Explore healing movies", "href": url_for("movies_page")},
         {"label": "Book therapist", "href": url_for("therapists_page")},
@@ -4623,13 +4728,18 @@ def build_patient_dashboard_context(user: dict[str, Any]) -> dict[str, Any]:
         "movie_profile": movie_profile,
         "community_profile": community_profile,
         "bookings": bookings,
+        "upcoming_bookings": upcoming_bookings,
+        "pending_review_bookings": pending_review_bookings,
         "latest_booking": latest_booking,
+        "doctor_chat_target": doctor_chat_target,
         "recommended_movies": movie_profile["recommended_movies"],
         "watched_movies": movie_profile["watched_movies"],
+        "watched_story_history": movie_profile["recently_watched"],
         "fav_movies": movie_profile["favorite_movies"],
         "top_categories": movie_profile["top_categories"],
         "movie_data": movie_profile["profile"],
         "growth_timeline": movie_profile["recently_watched"],
+        "joined_groups": community_profile["joined_groups"],
         "safety_highlights": SAFETY_CARDS[:3],
         "quick_actions": quick_actions,
         "wellness_summary": {

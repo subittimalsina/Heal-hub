@@ -135,7 +135,9 @@
           </small>
         </div>
 
-        <a class="btn btn-secondary chat-profile-link" href="{{ url_for('view_patient_profile', username=selected_conversation.partner_username) }}">View profile</a>
+        {% if partner.profile_href %}
+          <a class="btn btn-secondary chat-profile-link" href="{{ partner.profile_href }}">{{ partner.profile_link_label or "View profile" }}</a>
+        {% endif %}
 
         <div class="chat-info-actions">
           <button type="button" class="chat-info-btn" data-chat-mute>Mute</button>
@@ -206,6 +208,7 @@
         </div>
 
         <div class="chat-call-actions">
+          <button type="button" class="chat-info-btn" id="chatCallStart">Start call</button>
           <button type="button" class="chat-info-btn" id="chatCallMic">Mute mic</button>
           <button type="button" class="chat-info-btn" id="chatCallCamera">Turn camera off</button>
           <button type="button" class="chat-info-btn chat-call-end" id="chatCallEnd">End call</button>
@@ -676,6 +679,11 @@
       cursor: pointer;
     }
 
+    .chat-info-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .chat-info-list {
       display: grid;
       gap: 8px;
@@ -743,6 +751,10 @@
       place-items: center;
       padding: 20px;
       backdrop-filter: blur(4px);
+    }
+
+    .chat-call-overlay[hidden] {
+      display: none !important;
     }
 
     .chat-call-modal {
@@ -909,17 +921,21 @@
       const callMode = document.getElementById("chatCallMode");
       const callTimer = document.getElementById("chatCallTimer");
       const callLocalVideo = document.getElementById("chatCallLocalVideo");
+      const callStartBtn = document.getElementById("chatCallStart");
       const callMicBtn = document.getElementById("chatCallMic");
       const callCameraBtn = document.getElementById("chatCallCamera");
       const callCloseBtn = document.getElementById("chatCallClose");
       const callEndBtn = document.getElementById("chatCallEnd");
       const pollIntervalMs = 3500;
       let pollTimer = null;
+      let threadPermissionAlerted = false;
       const callState = {
         kind: "",
         stream: null,
         timer: null,
         startedAt: 0,
+        connecting: false,
+        live: false,
       };
 
       function nearBottom(node) {
@@ -1025,12 +1041,45 @@
         if (unread) unread.remove();
       }
 
+      function setComposerState(disabled, placeholder = "Write a message...") {
+        if (input) {
+          input.disabled = disabled;
+          input.placeholder = placeholder;
+        }
+        if (sendBtn) {
+          sendBtn.disabled = disabled;
+        }
+      }
+
       async function refreshActiveThread(preserveScroll = true) {
         if (!activeTo || !stream) return;
         try {
           const response = await fetch(`/api/messages-thread?user=${encodeURIComponent(activeTo)}`);
-          const payload = await response.json();
-          if (!response.ok || !payload.success) return;
+          let payload = {};
+          try {
+            payload = await response.json();
+          } catch (_error) {
+            payload = {};
+          }
+
+          if (response.status === 401 && payload.redirect) {
+            window.location.href = payload.redirect;
+            return;
+          }
+
+          if (!response.ok || !payload.success) {
+            if (response.status === 403) {
+              setComposerState(true, "You need to connect first to send messages.");
+              if (!threadPermissionAlerted) {
+                threadPermissionAlerted = true;
+                alert(payload.message || "You do not have access to this thread.");
+              }
+            }
+            return;
+          }
+
+          setComposerState(false);
+          threadPermissionAlerted = false;
           const messages = Array.isArray(payload.messages) ? payload.messages : [];
           renderMessages(messages, preserveScroll);
           updateActiveThreadMeta(messages);
@@ -1069,6 +1118,17 @@
         }
       }
 
+      function setLaunchButtonsDisabled(disabled) {
+        callButtons.forEach((button) => {
+          button.disabled = disabled;
+        });
+      }
+
+      function setInCallControlsEnabled(enabled) {
+        if (callMicBtn) callMicBtn.disabled = !enabled;
+        if (callCameraBtn && !callCameraBtn.hidden) callCameraBtn.disabled = !enabled;
+      }
+
       function formatDuration(ms) {
         const total = Math.max(0, Math.floor(ms / 1000));
         const mins = String(Math.floor(total / 60)).padStart(2, "0");
@@ -1077,57 +1137,128 @@
       }
 
       function closeCallOverlay() {
+        callState.connecting = false;
+        callState.live = false;
         stopCallTracks();
         if (callState.timer) {
           clearInterval(callState.timer);
           callState.timer = null;
         }
-        if (callOverlay) callOverlay.hidden = true;
+        callState.startedAt = 0;
+        callState.kind = "";
+        if (callOverlay) {
+          callOverlay.hidden = true;
+          callOverlay.style.display = "none";
+        }
         document.body.style.overflow = "";
         if (callLocalVideo) callLocalVideo.srcObject = null;
         callStage?.classList.remove("video-ready");
         if (callStatus) callStatus.textContent = "Connecting...";
         if (callTimer) callTimer.textContent = "00:00";
+        if (callStartBtn) {
+          callStartBtn.disabled = false;
+          callStartBtn.textContent = "Start call";
+        }
         if (callMicBtn) callMicBtn.textContent = "Mute mic";
         if (callCameraBtn) callCameraBtn.textContent = "Turn camera off";
+        setInCallControlsEnabled(false);
+        setLaunchButtonsDisabled(false);
       }
 
       async function openCall(kind) {
-        if (!callOverlay) return;
+        if (!callOverlay || callState.connecting) return;
         callState.kind = kind;
-        callState.startedAt = Date.now();
+        callState.live = false;
+        callState.startedAt = 0;
         if (callMode) callMode.textContent = kind === "video" ? "Video call" : "Audio call";
-        if (callStatus) callStatus.textContent = "Connecting...";
+        if (callStatus) {
+          callStatus.textContent = kind === "video"
+            ? "Ready when you are. Press Start call to connect video and audio."
+            : "Ready when you are. Press Start call to connect audio.";
+        }
+        if (callStartBtn) {
+          callStartBtn.disabled = false;
+          callStartBtn.textContent = "Start call";
+        }
         if (callMicBtn) callMicBtn.textContent = "Mute mic";
         if (callCameraBtn) callCameraBtn.textContent = "Turn camera off";
         if (callCameraBtn) callCameraBtn.hidden = kind !== "video";
         callStage?.classList.remove("video-ready");
         callOverlay.hidden = false;
+        callOverlay.style.display = "grid";
         document.body.style.overflow = "hidden";
+        setInCallControlsEnabled(false);
+        setLaunchButtonsDisabled(true);
 
-        if (callState.timer) clearInterval(callState.timer);
-        callState.timer = window.setInterval(() => {
-          if (callTimer) callTimer.textContent = formatDuration(Date.now() - callState.startedAt);
-        }, 1000);
+        stopCallTracks();
+        if (callLocalVideo) callLocalVideo.srcObject = null;
+        if (callState.timer) {
+          clearInterval(callState.timer);
+          callState.timer = null;
+        }
+        if (callTimer) callTimer.textContent = "00:00";
+      }
+
+      async function startCallMedia() {
+        if (!callOverlay || callOverlay.hidden || callState.connecting || callState.live) return;
 
         if (!navigator.mediaDevices?.getUserMedia) {
           if (callStatus) callStatus.textContent = "Camera/mic not supported in this browser.";
           return;
         }
 
+        callState.connecting = true;
+        if (callStartBtn) {
+          callStartBtn.disabled = true;
+          callStartBtn.textContent = "Connecting...";
+        }
+        if (callStatus) {
+          callStatus.textContent = callState.kind === "video"
+            ? "Requesting camera and microphone permission..."
+            : "Requesting microphone permission...";
+        }
+
         try {
           stopCallTracks();
-          const constraints = kind === "video" ? { audio: true, video: true } : { audio: true, video: false };
+          const constraints = callState.kind === "video" ? { audio: true, video: true } : { audio: true, video: false };
           callState.stream = await navigator.mediaDevices.getUserMedia(constraints);
+          callState.live = true;
+          callState.startedAt = Date.now();
+          callState.timer = window.setInterval(() => {
+            if (callTimer) callTimer.textContent = formatDuration(Date.now() - callState.startedAt);
+          }, 1000);
           if (callLocalVideo) callLocalVideo.srcObject = callState.stream;
-          if (kind === "video" && callState.stream.getVideoTracks().length > 0) {
+          if (callState.kind === "video" && callState.stream.getVideoTracks().length > 0) {
             callStage?.classList.add("video-ready");
           }
           if (callStatus) {
-            callStatus.textContent = kind === "video" ? "Video connected (demo mode)." : "Audio connected (demo mode).";
+            callStatus.textContent = callState.kind === "video" ? "Video connected (demo mode)." : "Audio connected (demo mode).";
           }
-        } catch (_error) {
-          if (callStatus) callStatus.textContent = "Could not access camera/mic. Check browser permissions.";
+          if (callStartBtn) {
+            callStartBtn.textContent = "Connected";
+          }
+          setInCallControlsEnabled(true);
+        } catch (error) {
+          callState.live = false;
+          setInCallControlsEnabled(false);
+          if (callStatus) {
+            if (error?.name === "NotAllowedError") {
+              callStatus.textContent = "Permission denied. Allow camera/mic access and try again.";
+            } else if (error?.name === "NotFoundError") {
+              callStatus.textContent = "No camera/microphone was found on this device.";
+            } else {
+              callStatus.textContent = "Could not access camera/mic. Check browser permissions.";
+            }
+          }
+          if (callStartBtn) {
+            callStartBtn.disabled = false;
+            callStartBtn.textContent = "Retry";
+          }
+        } finally {
+          callState.connecting = false;
+          if (callStartBtn && callState.live) {
+            callStartBtn.disabled = true;
+          }
         }
       }
 
@@ -1240,6 +1371,7 @@
         });
       });
 
+      callStartBtn?.addEventListener("click", startCallMedia);
       callCloseBtn?.addEventListener("click", closeCallOverlay);
       callEndBtn?.addEventListener("click", closeCallOverlay);
       callOverlay?.addEventListener("click", (event) => {
@@ -1273,6 +1405,10 @@
         callCameraBtn.textContent = nextEnabled ? "Turn camera off" : "Turn camera on";
       });
 
+      if (callOverlay) {
+        callOverlay.hidden = true;
+        callOverlay.style.display = "none";
+      }
       scrollToBottom(true);
       applyFilters();
       if (activeTo && stream) {

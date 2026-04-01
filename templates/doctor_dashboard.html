@@ -1,95 +1,128 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <section class="dashboard-overview doctor-dashboard-hero" data-reveal>
+  <section class="dashboard-overview doctor-dashboard-hero dashboard-neo-hero" data-reveal role="main" aria-labelledby="doctor-heading">
     <article class="surface dashboard-panel dashboard-intro-panel">
       <div class="hero-signal-row">
-        <span class="signal-chip signal-chip-primary">Doctor Portal</span>
-        <span class="signal-chip signal-chip-teal">Medicine Workflow</span>
-        <span class="signal-chip signal-chip-amber">Appointments Active</span>
+        <span class="signal-chip signal-chip-primary">Doctor Workspace</span>
+        <span class="signal-chip signal-chip-teal">{{ bookings|length }} Sessions</span>
+        <span class="signal-chip signal-chip-amber">{{ prescriptions|length }} Medicines</span>
       </div>
 
       <div class="dashboard-intro-copy">
         <div>
           <p class="eyebrow">Clinical dashboard</p>
-          <h1>{{ current_user.display_name }}</h1>
+          <h1 id="doctor-heading">{{ current_user.display_name | default("Dr. Priya Mehta") }}</h1>
         </div>
-        <p class="lead">Manage medicines and check upcoming appointments from one place.</p>
-        <p class="subcopy">{{ doctor_summary.insight_note }}</p>
+        <p class="lead">Manage medicines, follow-ups, and support signals in one place.</p>
+        <p class="subcopy">{{ doctor_summary.insight_note | default("Patient trend is stable with mild stress spikes in evenings.") }}</p>
       </div>
 
-      <div class="hub-stat-band">
-        <div class="hero-meta-card">
-          <span class="meta-label">Current patient</span>
-          <strong>{{ portal_patient.display_name }}</strong>
-          <small>{{ portal_patient.risk_label }}</small>
-        </div>
-        <div class="hero-meta-card">
-          <span class="meta-label">Upcoming appointments</span>
-          <strong>{{ bookings|length }}</strong>
-          <small>sessions on the calendar</small>
-        </div>
-        <div class="hero-meta-card">
-          <span class="meta-label">Medicines added</span>
-          <strong>{{ prescriptions|length }}</strong>
-          <small>active prescription records</small>
-        </div>
-        <div class="hero-meta-card">
-          <span class="meta-label">Watched stories</span>
-          <strong>{{ patient_insights.movies_watched }}</strong>
-          <small>context from the patient journey</small>
-        </div>
+      <div class="hero-actions">
+        <a href="#add-medicine" class="btn btn-primary">Add medicine</a>
+        <a href="/patients" class="btn btn-teal">Search patients</a>
+      </div>
+
+      <div class="dashboard-kpi-grid">
+        <article class="dashboard-kpi-card">
+          <span class="meta-label">Active patient</span>
+          <strong>{{ portal_patient.display_name | default("Alex Johnson") }}</strong>
+          <small>{{ portal_patient.risk_label | default("moderate risk") }}</small>
+        </article>
+        <article class="dashboard-kpi-card">
+          <span class="meta-label">Story themes</span>
+          <strong>{{ patient_story_profile.top_category_labels|join(', ') or "Resilience, Hope" }}</strong>
+          <small>top emotional categories</small>
+        </article>
+        <article class="dashboard-kpi-card">
+          <span class="meta-label">Movies watched</span>
+          <strong>{{ patient_insights.movies_watched | default(14) }}</strong>
+          <small>story behavior indicators</small>
+        </article>
+        <article class="dashboard-kpi-card">
+          <span class="meta-label">Community momentum</span>
+          <strong>{{ patient_community.momentum_score | default(82) }}</strong>
+          <small>social support continuity</small>
+        </article>
       </div>
     </article>
 
-    <aside class="dashboard-overview-side">
+    <aside class="dashboard-overview-side dashboard-neo-side">
       <article class="surface dashboard-panel dashboard-status-card">
         <span class="meta-label">Patient focus</span>
-        <strong>{{ portal_patient.primary_track|replace('-', ' ')|title }}</strong>
-        <p>{{ portal_patient.summary }}</p>
-        <small>Next follow-up: {{ portal_patient.next_follow_up }}</small>
+        <strong>{{ portal_patient.primary_track|replace('-', ' ')|title | default("Anxiety support") }}</strong>
+        <p>{{ portal_patient.summary | default("Better sleep trend this week; continue routine reinforcement.") }}</p>
+        <small>Next follow-up: {{ portal_patient.next_follow_up | default("12 Apr") }}</small>
       </article>
 
       <article class="surface dashboard-panel dashboard-status-card">
         <span class="meta-label">Top story themes</span>
-        <strong>{{ patient_story_profile.top_category_labels|join(", ") or "Still emerging" }}</strong>
-        <p>{{ patient_insights.story_preference_summary }}</p>
+        <strong>{{ patient_story_profile.top_category_labels|join(', ') or "Still emerging" }}</strong>
+        <p>{{ patient_insights.story_preference_summary | default("Story preferences are building from recent watch patterns.") }}</p>
       </article>
     </aside>
   </section>
 
-  <section class="dashboard-workspace">
-    <article class="surface dashboard-panel dashboard-intake-panel" data-reveal>
-      <div class="dashboard-section-head">
-        <div>
-          <p class="eyebrow">Add medicine</p>
-          <h2>Write a prescription</h2>
+  <section class="dashboard-neo-shell">
+    <div class="dashboard-neo-stack">
+      <article class="surface dashboard-panel dashboard-intake-panel" data-reveal id="add-medicine">
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Prescription workflow</p>
+            <h2>Add medicine</h2>
+          </div>
         </div>
-      </div>
 
-      <form class="intake-form dashboard-form" method="post">
-        <input type="hidden" name="patient_username" value="{{ portal_patient.username }}" />
-        <div class="input-row two-column">
-          <label><span>Medicine name</span><input name="medicine_name" placeholder="Amlodipine" required /></label>
-          <label><span>Purpose</span><input name="purpose" placeholder="Blood pressure support" required /></label>
-        </div>
-        <div class="input-row three-column">
-          <label><span>Dosage</span><input name="dosage" placeholder="5 mg" required /></label>
-          <label><span>Frequency</span><input name="frequency" placeholder="Once daily" required /></label>
-          <label><span>Duration</span><input name="duration" placeholder="30 days" required /></label>
-        </div>
-        <label><span>Instructions</span><textarea name="instructions" rows="3" placeholder="Take after breakfast."></textarea></label>
-        <div class="input-row two-column">
-          <label><span>Warnings</span><input name="warnings" placeholder="Escalate if dizziness worsens." /></label>
-          <label><span>Refill status</span><input name="refill_status" placeholder="Refill due in 14 days" /></label>
-        </div>
-        <div class="button-group dashboard-button-group">
-          <button class="btn btn-primary" type="submit">Add Medicine</button>
-        </div>
-      </form>
-    </article>
+        <form class="intake-form dashboard-form" method="post">
+          <input type="hidden" name="patient_username" value="{{ portal_patient.username | default('patient') }}" />
+          <div class="input-row two-column">
+            <label><span>Medicine name</span><input name="medicine_name" placeholder="Amlodipine" required /></label>
+            <label><span>Purpose</span><input name="purpose" placeholder="Blood pressure support" required /></label>
+          </div>
+          <div class="input-row three-column">
+            <label><span>Dosage</span><input name="dosage" placeholder="5 mg" required /></label>
+            <label><span>Frequency</span><input name="frequency" placeholder="Once daily" required /></label>
+            <label><span>Duration</span><input name="duration" placeholder="30 days" required /></label>
+          </div>
+          <label><span>Instructions</span><textarea name="instructions" rows="3" placeholder="Take after breakfast."></textarea></label>
+          <div class="input-row two-column">
+            <label><span>Warnings</span><input name="warnings" placeholder="Escalate if dizziness worsens." /></label>
+            <label><span>Refill status</span><input name="refill_status" placeholder="Refill due in 14 days" /></label>
+          </div>
+          <div class="button-group dashboard-button-group">
+            <button class="btn btn-primary" type="submit">Add medicine</button>
+          </div>
+        </form>
+      </article>
 
-    <aside class="dashboard-side-column">
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Medicine list</p>
+            <h2>Current prescriptions</h2>
+          </div>
+        </div>
+        {% if prescriptions %}
+          <div class="patient-board dashboard-prescription-board">
+            {% for rx in prescriptions %}
+              <article class="patient-card patient-card-active">
+                <div class="patient-card-head">
+                  <strong>{{ rx.medicine_name }}</strong>
+                  <span class="status-chip status-stable">{{ rx.refill_status }}</span>
+                </div>
+                <p>{{ rx.dosage }} - {{ rx.frequency }} - {{ rx.duration }}</p>
+                <small>{{ rx.instructions }}</small>
+              </article>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <h3>No medicines added yet</h3>
+            <p>Add the first prescription for this patient from the form above.</p>
+          </div>
+        {% endif %}
+      </article>
+
       <article class="surface dashboard-panel" data-reveal>
         <div class="dashboard-section-head">
           <div>
@@ -99,7 +132,7 @@
         </div>
         {% if bookings %}
           <div class="timeline-list">
-            {% for booking in bookings %}
+            {% for booking in bookings[:6] %}
               {% set status = booking.status|lower %}
               <article class="timeline-card">
                 <div class="timeline-card-head">
@@ -108,7 +141,7 @@
                     {{ booking.status|title }}
                   </span>
                 </div>
-                <p>{{ booking.therapist_name }} • {{ booking.date }} • {{ booking.time }}</p>
+                <p>{{ booking.therapist_name }} - {{ booking.date }} - {{ booking.time }}</p>
                 <small>{{ booking.notes }}</small>
               </article>
             {% endfor %}
@@ -117,82 +150,77 @@
           <div class="notice-banner">No upcoming appointments yet.</div>
         {% endif %}
       </article>
-    </aside>
-  </section>
+    </div>
 
-  <section class="dashboard-support-grid">
-    <article class="surface dashboard-panel" data-reveal>
-      <div class="dashboard-section-head">
-        <div>
-          <p class="eyebrow">Medicine list</p>
-          <h2>Current prescriptions</h2>
+    <aside class="dashboard-neo-stack">
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Patient summary</p>
+            <h2>{{ portal_patient.display_name | default("Current patient") }}</h2>
+          </div>
         </div>
-      </div>
-      {% if prescriptions %}
-        <div class="patient-board dashboard-prescription-board">
-          {% for rx in prescriptions %}
-            <article class="patient-card patient-card-active">
-              <div class="patient-card-head">
-                <strong>{{ rx.medicine_name }}</strong>
-                <span class="status-chip status-stable">{{ rx.refill_status }}</span>
-              </div>
-              <p>{{ rx.dosage }} • {{ rx.frequency }} • {{ rx.duration }}</p>
-              <small>{{ rx.instructions }}</small>
-            </article>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty-state">
-          <h3>No medicines added yet</h3>
-          <p>Add the first prescription for this patient from the form above.</p>
-        </div>
-      {% endif %}
-    </article>
+        <div class="notice-banner">{{ portal_patient.summary | default("Capture progress, context, and the next practical step.") }}</div>
 
-    <article class="surface dashboard-panel" data-reveal>
-      <div class="dashboard-section-head">
-        <div>
-          <p class="eyebrow">Patient summary</p>
-          <h2>{{ portal_patient.display_name }}</h2>
-        </div>
-      </div>
-      <div class="notice-banner">{{ portal_patient.summary }}</div>
-      <div class="dashboard-inline-block">
-        <span class="meta-label">Conditions</span>
-        <div class="tag-cloud">
-          {% for condition in portal_patient.conditions %}
-            <span>{{ condition }}</span>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="dashboard-inline-block">
-        <span class="meta-label">Recently watched</span>
-        <div class="stack-list">
-          {% for title in patient_insights.watched_titles[:4] %}
-            <div class="mini-profile-card">
-              <div>
-                <strong>{{ title }}</strong>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-      {% if notes %}
         <div class="dashboard-inline-block">
-          <span class="meta-label">Recent notes</span>
-          <div class="timeline-list">
-            {% for note in notes[:2] %}
-              <article class="timeline-card">
-                <div class="timeline-card-head">
-                  <strong>{{ note.created_at }}</strong>
-                  <span class="status-chip status-warning">{{ note.risk_level|title }}</span>
-                </div>
-                <p>{{ note.note }}</p>
-              </article>
+          <span class="meta-label">Conditions</span>
+          <div class="tag-cloud">
+            {% for condition in portal_patient.conditions %}
+              <span>{{ condition }}</span>
+            {% else %}
+              <span>General wellness</span>
             {% endfor %}
           </div>
         </div>
-      {% endif %}
-    </article>
+
+        <div class="dashboard-inline-block">
+          <span class="meta-label">Community circles</span>
+          <div class="tag-cloud">
+            {% for group in patient_community.joined_groups[:4] %}
+              <span>{{ group.name }}</span>
+            {% else %}
+              <span>No circles joined yet</span>
+            {% endfor %}
+          </div>
+        </div>
+      </article>
+
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">Client board</p>
+            <h2>Current caseload</h2>
+          </div>
+        </div>
+        <div class="dashboard-neo-list">
+          {% for client in doctor_clients[:3] %}
+            <article class="dashboard-neo-row">
+              <div class="dashboard-neo-row-head">
+                <strong>{{ client.display_name }}</strong>
+                <span class="status-chip status-neutral">{{ client.status }}</span>
+              </div>
+              <p>{{ client.focus }}</p>
+              <small>{{ client.next_step }}</small>
+            </article>
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="surface dashboard-panel" data-reveal>
+        <div class="dashboard-section-head">
+          <div>
+            <p class="eyebrow">AI triage view</p>
+            <h2>{{ ai_summary.urgency }}</h2>
+          </div>
+        </div>
+        <div class="notice-banner">Track: {{ ai_summary.track|title }}</div>
+        <ul class="stack-list">
+          {% for step in ai_summary.guidance %}
+            <li>{{ step }}</li>
+          {% endfor %}
+        </ul>
+        <small>{{ ai_summary.disclaimer }}</small>
+      </article>
+    </aside>
   </section>
 {% endblock %}
