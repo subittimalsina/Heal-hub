@@ -6,10 +6,10 @@
   {% set want_ids = user_movie_data.get('want_to_watch', []) if user_movie_data else [] %}
   {% set quick_picks = featured_story_arc if featured_story_arc else movies[:3] %}
   {% set mood_lanes = [
-    {"title": "Drama stories", "category": "drama", "copy": "Emotion-first picks with grounded, reflective storytelling.", "tone": "primary"},
-    {"title": "Action stories", "category": "action", "copy": "Fast-paced titles when you want energy and momentum.", "tone": "teal"},
-    {"title": "Comedy stories", "category": "comedy", "copy": "Lighten the day with humor, warmth, and social connection.", "tone": "amber"},
-    {"title": "Romance stories", "category": "romance", "copy": "Connection-driven stories around love, care, and vulnerability.", "tone": "rose"},
+    {"title": "Drama stories", "category": "drama", "blurb": "Emotion-first picks with grounded, reflective storytelling.", "tone": "primary"},
+    {"title": "Action stories", "category": "action", "blurb": "Fast-paced titles when you want energy and momentum.", "tone": "teal"},
+    {"title": "Comedy stories", "category": "comedy", "blurb": "Lighten the day with humor, warmth, and social connection.", "tone": "amber"},
+    {"title": "Romance stories", "category": "romance", "blurb": "Connection-driven stories around love, care, and vulnerability.", "tone": "rose"},
   ] %}
 
   <section class="hero-grid movie-redesign-hero" data-reveal>
@@ -131,7 +131,7 @@
         >
           <span class="story-mini-kicker">{{ lane.category }}</span>
           <strong>{{ lane.title }}</strong>
-          <p>{{ lane.copy }}</p>
+          <p>{{ lane.blurb }}</p>
         </a>
       {% endfor %}
     </div>
