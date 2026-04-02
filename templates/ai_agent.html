@@ -4,15 +4,15 @@
   <section class="surface ai-agent-hero" data-reveal>
     <div class="ai-agent-hero-copy">
       <p class="eyebrow">Heal Hub AI Agent</p>
-      <h1>Triage symptom patterns in one calm, guided flow.</h1>
+      <h1>Explain what is going on and get a support path.</h1>
       <p class="lead">
-        This page turns rough symptom notes into a likely care track, urgency label, and practical next steps for demos.
-        It supports triage discussion, not diagnosis.
+        This page turns a problem description into a calm support map with therapist suggestions, healing stories,
+        and community recommendations. It supports reflection and next steps, not diagnosis.
       </p>
       <div class="hero-signal-row">
-        <span class="signal-chip signal-chip-primary">Pattern-based track</span>
-        <span class="signal-chip signal-chip-teal">Urgency summary</span>
-        <span class="signal-chip signal-chip-amber">Safe next steps</span>
+        <span class="signal-chip signal-chip-primary">Support track</span>
+        <span class="signal-chip signal-chip-teal">Therapist matches</span>
+        <span class="signal-chip signal-chip-amber">Stories and circles</span>
       </div>
     </div>
 
@@ -20,12 +20,12 @@
       <p class="eyebrow">Safety first</p>
       <strong>This tool does not replace a doctor.</strong>
       <p>
-        If symptoms are severe, sudden, or worsening quickly, prioritize emergency care and clinical evaluation.
+        If you describe severe physical symptoms or immediate safety concerns, prioritize human and emergency support first.
       </p>
       <ul class="stack-list">
-        <li>Use short symptom phrases separated by commas.</li>
-        <li>Add duration or triggers if known.</li>
-        <li>Treat this as triage support, not final diagnosis.</li>
+        <li>Write naturally. A short paragraph is fine.</li>
+        <li>Include what feels hardest right now and what kind of support you want.</li>
+        <li>Treat this as routing support, not final diagnosis.</li>
       </ul>
     </aside>
   </section>
@@ -35,39 +35,39 @@
       <article class="surface dashboard-panel ai-agent-form-card">
         <div class="dashboard-section-head">
           <div>
-            <p class="eyebrow">Symptom input</p>
-            <h2>Describe what you are noticing</h2>
+            <p class="eyebrow">Support input</p>
+            <h2>Describe what you are dealing with</h2>
           </div>
           <span class="status-chip status-neutral" data-ai-agent-count>{{ symptom_text|length }} chars</span>
         </div>
 
         <form class="auth-form ai-agent-form" method="post">
           <label for="ai-agent-symptoms">
-            <span>Symptoms</span>
+            <span>Your situation</span>
             <textarea
               id="ai-agent-symptoms"
               name="symptoms"
               rows="5"
               maxlength="420"
-              placeholder="Try: chest pain, shortness of breath, fever, cough"
+              placeholder="Try: I feel burned out from work, my sleep is off, and I want support that feels gentle but useful."
               data-ai-agent-input
             >{{ symptom_text }}</textarea>
           </label>
 
-          <div class="ai-agent-quick-prompts" aria-label="Quick symptom templates">
-            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="chest pain, shortness of breath, dizziness">
-              Cardio warning set
+          <div class="ai-agent-quick-prompts" aria-label="Quick support templates">
+            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="I feel anxious all the time, I overthink after small things, and I want support that helps me slow down.">
+              Anxiety and overthinking
             </button>
-            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="fever, cough, sore throat, body ache">
-              Infection pattern set
+            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="I feel burned out, exhausted, and emotionally drained from work. I want support that does not feel intense.">
+              Burnout and pressure
             </button>
-            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="mental distress, insomnia, low appetite, fatigue">
-              Mental strain set
+            <button type="button" class="ai-agent-prompt-chip" data-ai-agent-template="I am dealing with heartbreak, loneliness, and low confidence after a breakup. I want something healing and grounding.">
+              Heartbreak and loneliness
             </button>
           </div>
 
           <div class="button-group ai-agent-actions">
-            <button class="btn btn-primary" type="submit">Analyze Symptoms</button>
+            <button class="btn btn-primary" type="submit">Get Support Suggestions</button>
             <button class="btn btn-ghost" type="button" data-ai-agent-clear>Clear</button>
           </div>
         </form>
@@ -89,13 +89,13 @@
           <article class="surface dashboard-panel ai-agent-result-main">
             <div class="dashboard-section-head">
               <div>
-                <p class="eyebrow">AI result</p>
+                <p class="eyebrow">AI support map</p>
                 <h2>{{ agent_result.headline }}</h2>
               </div>
             </div>
 
             <div class="notice-banner {{ urgency_tone }}">
-              <strong>Urgency: {{ agent_result.summary.urgency }}</strong>
+              <strong>Support pace: {{ agent_result.summary.urgency }}</strong>
               <span class="status-chip {{ urgency_tone }}">{{ agent_result.summary.track|title }}</span>
             </div>
 
@@ -106,30 +106,127 @@
             </ul>
 
             <p class="subcopy">{{ agent_result.summary.disclaimer }}</p>
+
+            <div class="ai-agent-recommendation-stack">
+              <section class="ai-agent-recommendation-group">
+                <div class="dashboard-section-head">
+                  <div>
+                    <p class="eyebrow">Therapists</p>
+                    <h3>Suggested therapists</h3>
+                  </div>
+                  <a href="{{ url_for('therapists_page') }}" class="story-filter-chip">Open therapists</a>
+                </div>
+                <div class="ai-agent-support-grid ai-agent-support-grid-therapists">
+                  {% for therapist in agent_result.therapist_recommendations %}
+                    <article class="ai-agent-support-card">
+                      <div class="ai-agent-support-card-head">
+                        <div class="ai-agent-support-avatar">
+                          {% if therapist.avatar_image %}
+                            <img src="{{ url_for('static', filename=therapist.avatar_image) }}" alt="{{ therapist.name }}" />
+                          {% else %}
+                            <span>{{ therapist.avatar_emoji }}</span>
+                          {% endif %}
+                        </div>
+                        <div>
+                          <strong>{{ therapist.name }}</strong>
+                          <small>{{ therapist.specialty }} · {{ therapist.experience }}</small>
+                        </div>
+                      </div>
+                      <p>{{ therapist.match_reason }}</p>
+                      <small>{{ therapist.availability }}</small>
+                      <a href="{{ therapist.href }}" class="story-filter-chip">View therapist</a>
+                    </article>
+                  {% endfor %}
+                </div>
+              </section>
+
+              <section class="ai-agent-recommendation-group">
+                <div class="dashboard-section-head">
+                  <div>
+                    <p class="eyebrow">Stories</p>
+                    <h3>Suggested movies and series</h3>
+                  </div>
+                  <a href="{{ url_for('movies_page') }}" class="story-filter-chip">Open library</a>
+                </div>
+                <div class="ai-agent-support-grid ai-agent-support-grid-stories">
+                  {% for story in agent_result.story_recommendations %}
+                    <article class="ai-agent-support-card ai-agent-story-card">
+                      <div class="ai-agent-story-media">
+                        {% if story.poster_image %}
+                          <img src="{{ url_for('static', filename=story.poster_image) }}" alt="{{ story.title }} poster" />
+                        {% else %}
+                          <div class="ai-agent-story-poster-fallback">{{ story.poster_emoji | default("🎬") }}</div>
+                        {% endif %}
+                      </div>
+                      <div class="ai-agent-story-copy">
+                        <strong>{{ story.title }}</strong>
+                        <small>{{ story.type|title }} · {{ story.genre }}</small>
+                        <p>{{ story.match_reason }}</p>
+                        <a href="{{ story.href }}" class="story-filter-chip">Open story</a>
+                      </div>
+                    </article>
+                  {% endfor %}
+                </div>
+              </section>
+
+              <section class="ai-agent-recommendation-group">
+                <div class="dashboard-section-head">
+                  <div>
+                    <p class="eyebrow">Community</p>
+                    <h3>Suggested circles</h3>
+                  </div>
+                  <a href="{{ url_for('community_page') }}" class="story-filter-chip">Open community</a>
+                </div>
+                <div class="ai-agent-support-grid ai-agent-support-grid-communities">
+                  {% for group in agent_result.community_recommendations %}
+                    <article class="ai-agent-support-card">
+                      <div class="ai-agent-support-card-head">
+                        <span class="ai-agent-community-icon">{{ group.icon }}</span>
+                        <div>
+                          <strong>{{ group.name }}</strong>
+                          <small>{{ group.members }} members · {{ group.category }}</small>
+                        </div>
+                      </div>
+                      <p>{{ group.match_reason }}</p>
+                      <small>{{ group.description }}</small>
+                      <a href="{{ group.href }}" class="story-filter-chip">Open circle</a>
+                    </article>
+                  {% endfor %}
+                </div>
+              </section>
+            </div>
           </article>
 
           <article class="surface dashboard-panel ai-agent-result-side">
             <div class="dashboard-section-head">
               <div>
-                <p class="eyebrow">Captured symptoms</p>
+                <p class="eyebrow">Detected focus</p>
                 <h2>Input summary</h2>
               </div>
             </div>
 
             <div class="ai-agent-chip-cloud">
-              {% for item in agent_result.symptoms %}
+              {% for item in agent_result.focus_labels %}
                 <span class="story-filter-chip small">{{ item }}</span>
               {% endfor %}
             </div>
 
             <div class="ai-agent-mini-stats">
               <div>
-                <small>Symptoms captured</small>
-                <strong>{{ agent_result.symptoms|length }}</strong>
+                <small>Focus signals</small>
+                <strong>{{ agent_result.focus_labels|length }}</strong>
               </div>
               <div>
-                <small>Priority track</small>
+                <small>Support track</small>
                 <strong>{{ agent_result.summary.track|title }}</strong>
+              </div>
+              <div>
+                <small>Therapist matches</small>
+                <strong>{{ agent_result.therapist_recommendations|length }}</strong>
+              </div>
+              <div>
+                <small>Story picks</small>
+                <strong>{{ agent_result.story_recommendations|length }}</strong>
               </div>
             </div>
           </article>
@@ -137,14 +234,14 @@
       {% else %}
         <section class="surface ai-agent-empty" data-reveal>
           <p class="eyebrow">Result panel</p>
-          <h2>Your triage summary will appear here after analysis.</h2>
+          <h2>Your support suggestions will appear here after analysis.</h2>
           <p class="subcopy">
-            Submit symptom notes to view urgency, broad track classification, and next-step recommendations.
+            Submit a short description to view a support track, therapist suggestions, story picks, and relevant communities.
           </p>
           <ul class="stack-list">
-            <li>Be specific: list key symptoms and combinations.</li>
-            <li>Include mental, physical, or respiratory signs together when relevant.</li>
-            <li>Use this output to support clinical conversation and escalation decisions.</li>
+            <li>Be specific about what feels hard right now.</li>
+            <li>Include emotional, physical, family, or work context if it matters.</li>
+            <li>Use this output as a support map, then choose what feels manageable first.</li>
           </ul>
         </section>
       {% endif %}
@@ -152,34 +249,34 @@
 
     <article class="surface dashboard-panel ai-agent-info-card">
       <p class="eyebrow">How it works</p>
-      <h2>What the AI triage layer checks first</h2>
+      <h2>What the AI support layer checks first</h2>
       <div class="ai-agent-check-grid">
         <div class="ai-agent-check-item">
           <span>01</span>
           <div>
-            <strong>Pattern match</strong>
-            <p>Symptoms are mapped to broad tracks like cardiovascular, infectious, or mental health.</p>
+            <strong>Problem pattern</strong>
+            <p>Your notes are mapped to broad support themes like anxiety, burnout, heartbreak, trauma, or family stress.</p>
           </div>
         </div>
         <div class="ai-agent-check-item">
           <span>02</span>
           <div>
-            <strong>Urgency label</strong>
-            <p>Each pattern returns an urgency summary to guide what should be checked next.</p>
+            <strong>Best-fit support</strong>
+            <p>The system matches existing therapists, healing stories, and communities that fit the kind of support you described.</p>
           </div>
         </div>
         <div class="ai-agent-check-item">
           <span>03</span>
           <div>
-            <strong>Next-step guidance</strong>
-            <p>The system suggests practical actions that are safer for triage conversations.</p>
+            <strong>Low-pressure next steps</strong>
+            <p>You get a calm support pace and practical next moves so the first step feels doable, not overwhelming.</p>
           </div>
         </div>
       </div>
       <div class="ai-agent-support-note">
         <strong>Emergency reminder</strong>
         <p>
-          Severe chest pain, breathing difficulty, fainting, confusion, or heavy bleeding should be treated as urgent emergencies.
+          If you are in immediate danger, feel at risk of harming yourself, or have severe physical symptoms, seek urgent human help right away.
         </p>
       </div>
     </article>

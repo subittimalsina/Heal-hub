@@ -5221,6 +5221,18 @@ code {
   accent-color: #8f74ff;
 }
 
+.page-community .community-neo-anon-toggle input[type="checkbox"] {
+  appearance: auto;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  margin: 0;
+  flex: 0 0 18px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
 .page-community .community-neo-compose-text {
   margin-top: 12px;
 }
@@ -5707,6 +5719,18 @@ code {
   accent-color: var(--primary);
 }
 
+.page-community .community-neo-anon-toggle input[type="checkbox"] {
+  appearance: auto;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  margin: 0;
+  flex: 0 0 18px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
 .page-community .community-neo-compose-actions strong {
   color: var(--muted-strong);
 }
@@ -6029,6 +6053,119 @@ code {
   border-radius: 20px;
 }
 
+.page-ai-agent .ai-agent-recommendation-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.page-ai-agent .ai-agent-recommendation-group {
+  display: grid;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.page-ai-agent .ai-agent-recommendation-group .dashboard-section-head {
+  margin-bottom: 0;
+}
+
+.page-ai-agent .ai-agent-recommendation-group h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.page-ai-agent .ai-agent-support-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.page-ai-agent .ai-agent-support-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(17, 62, 103, 0.1);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.page-ai-agent .ai-agent-support-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.page-ai-agent .ai-agent-support-card-head > div {
+  min-width: 0;
+}
+
+.page-ai-agent .ai-agent-support-card strong {
+  display: block;
+  color: var(--text-strong);
+  line-height: 1.3;
+}
+
+.page-ai-agent .ai-agent-support-card p,
+.page-ai-agent .ai-agent-support-card small {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.page-ai-agent .ai-agent-support-avatar,
+.page-ai-agent .ai-agent-community-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.36), transparent 28%),
+    linear-gradient(145deg, rgba(31, 116, 183, 0.16), rgba(22, 132, 120, 0.16));
+  box-shadow: 0 10px 18px rgba(17, 62, 103, 0.08);
+}
+
+.page-ai-agent .ai-agent-support-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.page-ai-agent .ai-agent-story-card {
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: start;
+}
+
+.page-ai-agent .ai-agent-story-media img,
+.page-ai-agent .ai-agent-story-poster-fallback {
+  width: 88px;
+  height: 124px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 1px solid rgba(17, 62, 103, 0.12);
+  box-shadow: 0 10px 18px rgba(17, 62, 103, 0.08);
+}
+
+.page-ai-agent .ai-agent-story-poster-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.34), transparent 28%),
+    linear-gradient(145deg, rgba(31, 116, 183, 0.14), rgba(22, 132, 120, 0.16));
+}
+
+.page-ai-agent .ai-agent-story-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
 .page-ai-agent .ai-agent-chip-cloud {
   display: flex;
   flex-wrap: wrap;
@@ -6092,6 +6229,11 @@ code {
 }
 
 @media (max-width: 820px) {
+  .page-ai-agent .ai-agent-support-grid,
+  .page-ai-agent .ai-agent-story-card {
+    grid-template-columns: 1fr;
+  }
+
   .page-ai-agent .ai-agent-actions {
     grid-template-columns: 1fr;
   }
@@ -6102,6 +6244,12 @@ code {
 
   .page-ai-agent .ai-agent-mini-stats {
     grid-template-columns: 1fr;
+  }
+
+  .page-ai-agent .ai-agent-story-media img,
+  .page-ai-agent .ai-agent-story-poster-fallback {
+    width: 100%;
+    height: 220px;
   }
 }
 
@@ -6365,6 +6513,7 @@ code {
 .page-dashboard .patient-dashboard-hero-copy {
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 
 .page-dashboard .patient-dashboard-toolbar {
@@ -6378,6 +6527,27 @@ code {
   display: grid;
   gap: 10px;
   max-width: 720px;
+  min-width: 0;
+}
+
+.page-dashboard .patient-dashboard-toolbar > * {
+  min-width: 0;
+}
+
+.page-dashboard .patient-dashboard-heading .lead,
+.page-dashboard .patient-dashboard-heading .subcopy,
+.page-dashboard .patient-dashboard-spotlight p,
+.page-dashboard .patient-dashboard-spotlight small {
+  margin: 0;
+}
+
+.page-dashboard .patient-dashboard-heading .lead {
+  max-width: 62ch;
+}
+
+.page-dashboard .patient-dashboard-heading .subcopy {
+  max-width: 68ch;
+  color: var(--muted);
 }
 
 .page-dashboard .dashboard-profile-chip {
@@ -6444,6 +6614,7 @@ code {
   justify-content: flex-end;
   gap: 10px;
   min-width: 220px;
+  align-self: flex-start;
 }
 
 .page-dashboard .patient-dashboard-actions .btn,
@@ -6482,6 +6653,12 @@ code {
   box-shadow: 0 12px 20px rgba(17, 62, 103, 0.08);
 }
 
+.page-dashboard .chat-link-btn:focus-visible,
+.page-dashboard .story-filter-chip:focus-visible {
+  outline: 3px solid rgba(15, 91, 147, 0.16);
+  outline-offset: 2px;
+}
+
 .page-dashboard .chat-link-btn-small {
   width: 34px;
   height: 34px;
@@ -6504,6 +6681,7 @@ code {
 .page-dashboard .patient-dashboard-stat-card {
   position: relative;
   display: grid;
+  align-content: start;
   gap: 8px;
   min-height: 116px;
   padding: 16px;
@@ -6608,6 +6786,15 @@ code {
   color: rgba(255, 255, 255, 0.84);
 }
 
+.page-dashboard .dashboard-section-head > div,
+.page-dashboard .patient-appointment-body,
+.page-dashboard .patient-appointment-head > div,
+.page-dashboard .patient-review-card-head > div,
+.page-dashboard .patient-story-copy,
+.page-dashboard .patient-community-head > div {
+  min-width: 0;
+}
+
 .page-dashboard .patient-dashboard-spotlight-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6706,6 +6893,7 @@ code {
   border-radius: 14px;
   border: 1px dashed rgba(17, 62, 103, 0.18);
   background: rgba(247, 251, 255, 0.92);
+  color: var(--muted-strong);
 }
 
 .page-dashboard .patient-dashboard-column {
@@ -6795,6 +6983,7 @@ code {
 .page-dashboard .patient-review-card-head,
 .page-dashboard .patient-community-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
@@ -6808,12 +6997,24 @@ code {
   line-height: 1.6;
 }
 
+.page-dashboard .patient-appointment-head strong,
+.page-dashboard .patient-review-card-head strong,
+.page-dashboard .patient-community-head strong,
+.page-dashboard .patient-story-copy strong {
+  line-height: 1.3;
+}
+
 .page-dashboard .patient-dashboard-panel-review {
   background: rgba(255, 255, 255, 0.96);
 }
 
 .page-dashboard .patient-review-card {
   padding: 16px;
+}
+
+.page-dashboard .patient-review-card small,
+.page-dashboard .patient-community-card small {
+  line-height: 1.6;
 }
 
 .page-dashboard .patient-review-empty {
@@ -6918,6 +7119,14 @@ code {
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
 }
 
+.page-dashboard .patient-appointment-card:focus-within,
+.page-dashboard .patient-review-card:focus-within,
+.page-dashboard .patient-story-card:focus-within,
+.page-dashboard .patient-community-card:focus-within {
+  border-color: rgba(31, 116, 183, 0.18);
+  box-shadow: 0 0 0 3px rgba(15, 91, 147, 0.08);
+}
+
 .page-dashboard .patient-community-icon {
   display: inline-flex;
   align-items: center;
@@ -6984,7 +7193,7 @@ code {
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 1024px) {
   .page-dashboard .patient-dashboard-toolbar {
     flex-direction: column;
   }
@@ -6993,13 +7202,15 @@ code {
     justify-content: flex-start;
     min-width: 0;
   }
+}
 
+@media (max-width: 820px) {
   .page-dashboard .dashboard-profile-chip {
     align-items: flex-start;
   }
 
   .page-dashboard .patient-dashboard-hero-card {
-    padding: 24px;
+    padding: 22px;
   }
 
   .page-dashboard .patient-dashboard-stat-grid,
@@ -7016,6 +7227,13 @@ code {
     grid-template-columns: 1fr;
   }
 
+  .page-dashboard .patient-appointment-head,
+  .page-dashboard .patient-review-card-head,
+  .page-dashboard .patient-community-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .page-dashboard .patient-story-poster {
     width: 100%;
     height: 220px;
@@ -7023,5 +7241,15 @@ code {
 
   .page-dashboard .patient-community-head {
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-dashboard .patient-dashboard-stat-card {
+    min-height: auto;
+  }
+
+  .page-dashboard .patient-dashboard-spotlight {
+    padding: 18px;
   }
 }

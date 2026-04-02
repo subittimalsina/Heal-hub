@@ -104,6 +104,16 @@ Heal Hub uses a lightweight, demo-friendly decision engine:
    - Every patient includes a score breakdown and a "Why this decision?" panel
    - The UI shows both clinical urgency factors and operational resource reasoning
 
+## Local AI mode
+
+Heal Hub can also run the `/ai-agent` page with a local Ollama model.
+
+- Default local model: `qwen2.5:0.5b`
+- Safe fallback: if the local model is unavailable, Heal Hub falls back to the existing rule-based triage summary
+- Config file: `.env.local`
+
+This keeps the project usable on low-cost laptops while letting the AI page feel more dynamic. If you have a stronger machine, you can switch to `qwen2.5:1.5b` in `.env.local`.
+
 ## Demo flow
 
 1. Open the landing page and click **Get Started**
@@ -116,6 +126,32 @@ Heal Hub uses a lightweight, demo-friendly decision engine:
 8. Use the **Why this decision?** panel to explain the AI output to judges
 
 ## Setup
+
+### One-command setup with local AI
+
+Run this from the project root:
+
+```bash
+bash start_heal_hub.sh
+```
+
+What it does:
+
+- creates `.venv` if needed
+- installs Python dependencies
+- installs Ollama if it is missing
+- starts the Ollama service
+- pulls `qwen2.5:0.5b`
+- writes `.env.local`
+- launches the Flask app
+
+If you only want to prepare everything without starting the app:
+
+```bash
+HEAL_HUB_SETUP_ONLY=1 bash start_heal_hub.sh
+```
+
+### Manual setup
 
 1. Create and activate a virtual environment:
 

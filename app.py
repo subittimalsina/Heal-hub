@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import random
+import re
 import threading
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
 from statistics import mean
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from flask import (
     Flask,
@@ -25,7 +29,34 @@ from werkzeug.utils import secure_filename
 
 
 BASE_DIR = Path(__file__).resolve().parent
+ENV_LOCAL_PATH = BASE_DIR / ".env.local"
 DATA_DIR = BASE_DIR / "data"
+
+
+def load_local_env(path: Path) -> None:
+    if not path.exists():
+        return
+
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        clean_key = key.strip()
+        clean_value = value.strip()
+        if len(clean_value) >= 2 and clean_value[0] == clean_value[-1] and clean_value[0] in {"'", '"'}:
+            clean_value = clean_value[1:-1]
+        if clean_key:
+            os.environ.setdefault(clean_key, clean_value)
+
+
+load_local_env(ENV_LOCAL_PATH)
 
 
 SYMPTOM_LIBRARY: dict[str, dict[str, Any]] = {
@@ -335,14 +366,681 @@ def ai_triage_summary(symptoms: list[str]) -> dict[str, Any]:
     }
 
 
-def build_ai_agent_result(symptom_text: str) -> dict[str, Any]:
-    symptoms = split_symptoms(symptom_text)
-    summary = ai_triage_summary(symptoms)
+COMMON_INPUT_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "because", "been", "but", "by", "for", "from", "get", "had",
+    "has", "have", "i", "i'm", "if", "in", "into", "is", "it", "it's", "just", "me", "my", "of", "on", "or",
+    "so", "that", "the", "their", "them", "there", "they", "this", "to", "too", "was", "we", "with", "you",
+    "your", "after", "before", "still", "very", "really", "feel", "feeling", "feels",
+}
+
+SUPPORT_THEME_MAP: dict[str, dict[str, Any]] = {
+    "anxiety": {
+        "label": "Anxiety",
+        "keywords": ["anxiety", "anxious", "panic", "overthinking", "worry", "worried", "nervous", "fear", "restless", "insomnia"],
+        "track": "mental health support",
+        "urgency": "Supportive follow-up",
+        "guidance": [
+            "Start with a therapist who can support anxiety regulation and grounding.",
+            "Pair that with gentle, steady stories and a low-pressure community space.",
+        ],
+        "therapist_focus": "anxiety",
+        "therapist_terms": ["anxiety", "stress", "cbt", "mindfulness", "mental wellness"],
+        "story_categories": ["mental wellness", "healing", "friendship", "self-growth", "inspiration"],
+        "story_moods": ["calm", "therapy", "kindness", "optimism", "belonging"],
+        "community_ids": ["grp-001", "grp-006", "grp-005"],
+    },
+    "depression": {
+        "label": "Low mood",
+        "keywords": ["depressed", "depression", "hopeless", "empty", "numb", "low mood", "can't get out of bed", "sad"],
+        "track": "mental health support",
+        "urgency": "Supportive follow-up",
+        "guidance": [
+            "Choose support that feels steady, compassionate, and easy to return to.",
+            "Look for stories and communities that reinforce hope, belonging, and small forward steps.",
+        ],
+        "therapist_focus": "anxiety",
+        "therapist_terms": ["depression", "mood disorders", "therapy", "mental wellness"],
+        "story_categories": ["healing", "mental wellness", "inspiration", "friendship"],
+        "story_moods": ["hope", "belonging", "therapy", "breakthrough", "optimism"],
+        "community_ids": ["grp-006", "grp-001", "grp-005"],
+    },
+    "burnout": {
+        "label": "Burnout",
+        "keywords": ["burnout", "burned out", "overwhelmed", "overloaded", "exhausted", "drained", "work stress", "fatigue", "can't switch off", "sleep is off"],
+        "track": "stress recovery",
+        "urgency": "Supportive follow-up",
+        "guidance": [
+            "Prioritize low-pressure support that helps you recover energy before pushing harder.",
+            "Stress-focused therapy and validating support circles are often a good first step.",
+        ],
+        "therapist_focus": "anxiety",
+        "therapist_terms": ["burnout", "stress", "resilience", "fatigue", "mindfulness"],
+        "story_categories": ["motivation", "healing", "self-growth", "life struggles"],
+        "story_moods": ["renewal", "self-discovery", "fun reset", "calm", "hope"],
+        "community_ids": ["grp-004", "grp-006", "grp-005"],
+    },
+    "heartbreak": {
+        "label": "Heartbreak",
+        "keywords": ["heartbreak", "breakup", "broke up", "divorce", "loss", "grief", "missing them", "relationship ended"],
+        "track": "emotional healing",
+        "urgency": "Supportive follow-up",
+        "guidance": [
+            "Start with emotionally validating support rather than intense pressure to move on quickly.",
+            "Healing stories and gentle community support can help alongside therapy.",
+        ],
+        "therapist_focus": "relationships",
+        "therapist_terms": ["relationship", "self-esteem", "life transitions", "grief", "healing"],
+        "story_categories": ["healing", "women empowerment", "life struggles", "friendship"],
+        "story_moods": ["healing journey", "renewal", "gentle love", "hope", "self-discovery"],
+        "community_ids": ["grp-002", "grp-006", "grp-005"],
+    },
+    "trauma": {
+        "label": "Trauma",
+        "keywords": ["trauma", "ptsd", "flashback", "abuse", "unsafe", "triggered", "panic attack", "survival"],
+        "track": "trauma-informed support",
+        "urgency": "Prompt supportive review",
+        "guidance": [
+            "Trauma-informed therapy is the strongest first support route here.",
+            "Choose emotionally safe stories and communities that do not feel overwhelming.",
+        ],
+        "therapist_focus": "trauma",
+        "therapist_terms": ["trauma", "ptsd", "grounding", "resilience", "recovery"],
+        "story_categories": ["healing", "mental wellness", "friendship"],
+        "story_moods": ["healing", "connection", "breakthrough", "belonging"],
+        "community_ids": ["grp-006", "grp-001", "grp-005"],
+    },
+    "family": {
+        "label": "Family",
+        "keywords": ["family", "parents", "mother", "father", "siblings", "home conflict", "house tension", "communication"],
+        "track": "family support",
+        "urgency": "Supportive follow-up",
+        "guidance": [
+            "Family-centered therapy can help if the strain is relational rather than individual only.",
+            "Stories about belonging, boundaries, and family pressure may feel especially relevant.",
+        ],
+        "therapist_focus": "family",
+        "therapist_terms": ["family", "communication", "conflict", "relationships"],
+        "story_categories": ["family", "healing", "inner child", "friendship"],
+        "story_moods": ["family healing", "belonging", "memory", "self-worth"],
+        "community_ids": ["grp-006", "grp-005", "grp-003"],
+    },
+    "women": {
+        "label": "Women's wellness",
+        "keywords": ["postpartum", "pregnancy", "motherhood", "women", "woman", "female", "empowerment", "period"],
+        "track": "women's wellness support",
+        "urgency": "Supportive follow-up",
+        "guidance": [
+            "A women-focused therapist or circle may make support feel safer and more relevant.",
+            "Use stories that reinforce strength, recovery, and self-definition.",
+        ],
+        "therapist_focus": "women",
+        "therapist_terms": ["women", "postpartum", "empowerment", "motherhood"],
+        "story_categories": ["women empowerment", "healing", "self-growth", "life struggles"],
+        "story_moods": ["empowerment", "sisterhood", "strength", "renewal"],
+        "community_ids": ["grp-003", "grp-005", "grp-006"],
+    },
+    "confidence": {
+        "label": "Confidence",
+        "keywords": ["confidence", "self-esteem", "stuck", "direction", "purpose", "motivation", "discipline", "identity"],
+        "track": "personal growth support",
+        "urgency": "Supportive follow-up",
+        "guidance": [
+            "Look for support that balances reflection with practical next steps.",
+            "Stories with growth arcs and communities built around small wins can help momentum return.",
+        ],
+        "therapist_focus": "relationships",
+        "therapist_terms": ["self-esteem", "life transitions", "motivation", "growth"],
+        "story_categories": ["self-growth", "motivation", "inspiration", "women empowerment"],
+        "story_moods": ["courage", "determination", "self-discovery", "living fully"],
+        "community_ids": ["grp-005", "grp-003", "grp-006"],
+    },
+    "loneliness": {
+        "label": "Loneliness",
+        "keywords": ["alone", "lonely", "isolated", "no one", "nobody", "disconnected", "belonging", "left out"],
+        "track": "general support",
+        "urgency": "Gentle check-in",
+        "guidance": [
+            "Start with spaces that help you feel accompanied rather than pushed.",
+            "Support groups and warm, community-centered stories may help first.",
+        ],
+        "therapist_focus": "relationships",
+        "therapist_terms": ["relationships", "self-esteem", "communication", "connection"],
+        "story_categories": ["friendship", "healing", "inner child", "family"],
+        "story_moods": ["belonging", "connection", "kindness", "gentle love"],
+        "community_ids": ["grp-006", "grp-001", "grp-005"],
+    },
+}
+
+SAFETY_ALERT_KEYWORDS = [
+    "suicide",
+    "suicidal",
+    "kill myself",
+    "hurt myself",
+    "self harm",
+    "self-harm",
+    "don't want to live",
+]
+
+
+def extract_input_keywords(problem_text: str) -> list[str]:
+    tokens = re.findall(r"[a-zA-Z']+", problem_text.lower())
+    return [token for token in tokens if len(token) > 2 and token not in COMMON_INPUT_STOPWORDS]
+
+
+def extract_medical_symptoms_from_text(problem_text: str) -> list[str]:
+    lowered = problem_text.lower()
+    matches = [
+        symptom
+        for symptom in SYMPTOM_LIBRARY
+        if re.search(rf"\b{re.escape(symptom)}\b", lowered)
+    ]
+    return matches
+
+
+def looks_like_symptom_list(problem_text: str) -> bool:
+    raw_text = str(problem_text or "").strip()
+    lowered = raw_text.lower()
+    parts = [part.strip().lower() for part in raw_text.replace("\n", ",").split(",") if part.strip()]
+    if len(parts) < 2:
+        return False
+    if any(marker in raw_text for marker in [". ", "! ", "? "]):
+        return False
+
+    exact_symptom_matches = sum(1 for part in parts if part in SYMPTOM_LIBRARY)
+    if exact_symptom_matches >= max(2, len(parts) - 1):
+        return True
+
+    if re.search(r"\b(i|i'm|im|my|me|feel|feeling|want|need|because|after|from|support)\b", lowered):
+        return False
+
+    average_words = sum(len(part.split()) for part in parts) / len(parts)
+    max_words = max(len(part.split()) for part in parts)
+    return average_words <= 3 and max_words <= 4
+
+
+def extract_support_themes(problem_text: str, symptoms: list[str] | None = None) -> list[str]:
+    lowered = problem_text.lower()
+    scores: list[tuple[str, int]] = []
+
+    for theme_id, theme in SUPPORT_THEME_MAP.items():
+        score = 0
+        for keyword in theme["keywords"]:
+            if keyword in lowered:
+                score += 3 if " " in keyword else 2
+        if score > 0:
+            scores.append((theme_id, score))
+
+    if symptoms:
+        lowered_symptoms = {symptom.lower() for symptom in symptoms}
+        if "mental distress" in lowered_symptoms:
+            scores.append(("anxiety", 2))
+
+    merged: dict[str, int] = {}
+    for theme_id, score in scores:
+        merged[theme_id] = merged.get(theme_id, 0) + score
+
+    ordered = sorted(merged.items(), key=lambda item: (-item[1], item[0]))
+    return [theme_id for theme_id, _ in ordered[:3]]
+
+
+def support_theme_labels(theme_ids: list[str]) -> list[str]:
+    return [SUPPORT_THEME_MAP[theme_id]["label"] for theme_id in theme_ids if theme_id in SUPPORT_THEME_MAP]
+
+
+def build_support_summary(problem_text: str, symptoms: list[str], theme_ids: list[str]) -> dict[str, Any]:
+    lowered = problem_text.lower()
+    if any(keyword in lowered for keyword in SAFETY_ALERT_KEYWORDS):
+        return {
+            "track": "urgent mental health support",
+            "urgency": "Immediate human support",
+            "guidance": [
+                "Reach local emergency, crisis, or urgent support right now if you feel at risk of harming yourself.",
+                "Contact a trusted person and avoid staying alone while the risk feels active.",
+            ],
+            "disclaimer": "Heal Hub can suggest support routes, but it cannot respond to emergencies or provide crisis care.",
+        }
+
+    urgent_symptoms = [symptom for symptom in symptoms if symptom != "mental distress"]
+    if urgent_symptoms:
+        return ai_triage_summary(urgent_symptoms)
+
+    if theme_ids:
+        primary = SUPPORT_THEME_MAP[theme_ids[0]]
+        return {
+            "track": primary["track"],
+            "urgency": primary["urgency"],
+            "guidance": primary["guidance"],
+            "disclaimer": "Heal Hub suggests support routes, stories, and communities for reflection. It does not provide a diagnosis.",
+        }
+
     return {
-        "symptoms": symptoms,
-        "summary": summary,
-        "headline": f"Likely priority track: {summary['track'].title()}",
+        "track": "general support",
+        "urgency": "Reflective next step",
+        "guidance": [
+            "Start with one therapist, one story, and one community that feels manageable rather than overwhelming.",
+            "Use this as a gentle support map, then adjust based on what feels helpful in practice.",
+        ],
+        "disclaimer": "Heal Hub suggests support routes, stories, and communities for reflection. It does not provide a diagnosis.",
     }
+
+
+def build_local_ai_prompt(problem_text: str, themes: list[str], symptoms: list[str], fallback: dict[str, Any]) -> str:
+    theme_line = ", ".join(support_theme_labels(themes)) or "none detected"
+    symptom_line = ", ".join(symptoms) or "none detected"
+    fallback_guidance = "; ".join(fallback.get("guidance", []))
+    return (
+        "You are Heal Hub's local support-routing assistant.\n"
+        "A user described what they are going through. Return JSON only with this exact shape:\n"
+        '{'
+        '"track": "broad support track", '
+        '"urgency": "short support pace", '
+        '"guidance": ["short action 1", "short action 2"], '
+        '"disclaimer": "short non-diagnosis disclaimer"'
+        "}\n"
+        "Rules:\n"
+        "- Do not diagnose.\n"
+        "- Keep the response emotionally safe, practical, and concise.\n"
+        "- The track should be broad, like mental health support, stress recovery, emotional healing, trauma-informed support, women's wellness support, family support, or general support.\n"
+        "- Guidance should help someone choose support, not promise outcomes.\n"
+        "- Disclaimer must say this is not a diagnosis.\n"
+        f"User message: {problem_text.strip()}\n"
+        f"Detected support themes: {theme_line}\n"
+        f"Detected symptom phrases: {symptom_line}\n"
+        f"Fallback track: {fallback.get('track', '')}\n"
+        f"Fallback urgency: {fallback.get('urgency', '')}\n"
+        f"Fallback guidance: {fallback_guidance}"
+    )
+
+
+def match_reason(labels: list[str], fallback: str) -> str:
+    cleaned = [label for label in labels if label]
+    if not cleaned:
+        return fallback
+    if len(cleaned) == 1:
+        return f"Strong match for {cleaned[0].lower()} support."
+    return f"Strong match for {', '.join(label.lower() for label in cleaned[:2])} support."
+
+
+def recommend_therapists_for_text(problem_text: str, theme_ids: list[str], limit: int = 3) -> list[dict[str, Any]]:
+    keyword_tokens = extract_input_keywords(problem_text)
+    ranked: list[tuple[tuple[int, float], dict[str, Any]]] = []
+
+    for therapist in THERAPISTS_DATA:
+        haystack = " ".join(
+            [
+                therapist.get("name", ""),
+                therapist.get("specialty", ""),
+                therapist.get("bio", ""),
+                " ".join(therapist.get("tags", [])),
+            ]
+        ).lower()
+        score = 0
+        matches: list[str] = []
+
+        for index, theme_id in enumerate(theme_ids):
+            theme = SUPPORT_THEME_MAP.get(theme_id, {})
+            theme_weight = max(1, len(theme_ids) - index)
+            theme_score = sum(1 for term in theme.get("therapist_terms", []) if term in haystack)
+            if theme_score:
+                score += theme_score * 8 * theme_weight
+                matches.append(theme.get("label", "Support"))
+            if therapist.get("specialty", "").lower().startswith(theme.get("label", "").lower()):
+                score += 3 * theme_weight
+
+        token_hits = sum(1 for token in keyword_tokens if token in haystack)
+        score += token_hits * 2
+        score += 3 if therapist.get("is_top_choice") else 0
+        score += int(float(therapist.get("rating", 0)) * 2)
+
+        focus = next(
+            (
+                SUPPORT_THEME_MAP[theme_id].get("therapist_focus", "all")
+                for theme_id in theme_ids
+                if SUPPORT_THEME_MAP.get(theme_id, {}).get("therapist_focus")
+            ),
+            "all",
+        )
+
+        ranked.append(
+            (
+                (score, float(therapist.get("rating", 0))),
+                {
+                    **therapist,
+                    "href": url_for("therapists_page", focus=focus) if focus != "all" else url_for("therapists_page"),
+                    "match_reason": match_reason(
+                        dedupe_preserving_order(matches),
+                        "A strong fit based on specialty, care style, and your description.",
+                    ),
+                },
+            )
+        )
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    return [item[1] for item in ranked[:limit]]
+
+
+def recommend_stories_for_text(problem_text: str, theme_ids: list[str], username: str = "", limit: int = 4) -> list[dict[str, Any]]:
+    keyword_tokens = extract_input_keywords(problem_text)
+    watched_ids: set[str] = set()
+    if username:
+        watched_ids = set(ensure_user_movie_profile(username).get("watched", []))
+
+    ranked: list[tuple[tuple[int, int], dict[str, Any]]] = []
+    for movie in MOVIES_DATA:
+        if movie["id"] in watched_ids:
+            continue
+
+        haystack = " ".join(
+            [
+                movie.get("title", ""),
+                movie.get("genre", ""),
+                movie.get("description", ""),
+                movie.get("why_helps", ""),
+                " ".join(movie.get("categories", [])),
+                " ".join(movie.get("mood_tags", [])),
+            ]
+        ).lower()
+        score = 0
+        matches: list[str] = []
+
+        for index, theme_id in enumerate(theme_ids):
+            theme = SUPPORT_THEME_MAP.get(theme_id, {})
+            theme_weight = max(1, len(theme_ids) - index)
+            category_hits = len(set(theme.get("story_categories", [])).intersection(movie.get("categories", [])))
+            mood_hits = len(set(theme.get("story_moods", [])).intersection(movie.get("mood_tags", [])))
+            if category_hits or mood_hits:
+                score += (category_hits * 7 + mood_hits * 5) * theme_weight
+                matches.append(theme.get("label", "Support"))
+
+        score += sum(1 for token in keyword_tokens if token in haystack) * 2
+        score += 2 if movie.get("type") == "series" else 0
+        score += int(movie.get("year") or 0) // 1000
+
+        primary_query = next(
+            (
+                SUPPORT_THEME_MAP[theme_id]["story_categories"][0]
+                for theme_id in theme_ids
+                if SUPPORT_THEME_MAP.get(theme_id, {}).get("story_categories")
+            ),
+            "",
+        )
+        ranked.append(
+            (
+                (score, int(movie.get("year") or 0)),
+                {
+                    **movie,
+                    "href": url_for("movies_page", q=primary_query) if primary_query else url_for("movies_page"),
+                    "match_reason": match_reason(
+                        dedupe_preserving_order(matches),
+                        movie.get("why_helps", "A thoughtful story match based on your description."),
+                    ),
+                },
+            )
+        )
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    picks = [item[1] for item in ranked[:limit]]
+
+    if not any(item.get("type") == "series" for item in picks):
+        series_candidate = next((item[1] for item in ranked if item[1].get("type") == "series"), None)
+        if series_candidate and picks:
+            picks[-1] = series_candidate
+    return picks
+
+
+def recommend_communities_for_text(problem_text: str, theme_ids: list[str], username: str = "", limit: int = 3) -> list[dict[str, Any]]:
+    keyword_tokens = extract_input_keywords(problem_text)
+    joined_ids: set[str] = set()
+    if username:
+        joined_ids = set(USER_COMMUNITY_DATA.get(username, default_community_profile()).get("joined_groups", []))
+
+    group_cards = build_community_group_cards(username)
+    primary_group_id = ""
+    if theme_ids:
+        primary_group_id = next(
+            (
+                group_id
+                for group_id in SUPPORT_THEME_MAP.get(theme_ids[0], {}).get("community_ids", [])
+                if group_id
+            ),
+            "",
+        )
+    ranked: list[tuple[tuple[int, int], dict[str, Any]]] = []
+    for group in group_cards:
+        if group.get("id") in joined_ids:
+            continue
+
+        haystack = " ".join(
+            [
+                group.get("name", ""),
+                group.get("description", ""),
+                group.get("category", ""),
+                " ".join(group.get("focus_tags", [])),
+            ]
+        ).lower()
+        score = 0
+        matches: list[str] = []
+        for index, theme_id in enumerate(theme_ids):
+            theme = SUPPORT_THEME_MAP.get(theme_id, {})
+            theme_weight = max(1, len(theme_ids) - index)
+            priority_ids = theme.get("community_ids", [])
+            if group.get("id") in priority_ids:
+                rank_index = priority_ids.index(group.get("id"))
+                score += max(8, 16 - rank_index * 3) * theme_weight
+                matches.append(theme.get("label", "Support"))
+            score += sum(1 for keyword in theme.get("keywords", []) if keyword in haystack) * theme_weight
+
+        if primary_group_id and group.get("id") == primary_group_id:
+            score += 12
+
+        score += sum(1 for token in keyword_tokens if token in haystack) * 2
+        score += int(group.get("members", 0)) // 80
+
+        ranked.append(
+            (
+                (score, int(group.get("members", 0))),
+                {
+                    **group,
+                    "href": url_for("community_page", group=group.get("id")) + "#community-feed",
+                    "match_reason": match_reason(
+                        dedupe_preserving_order(matches),
+                        group.get("match_reason", "A thoughtful community match based on your description."),
+                    ),
+                },
+            )
+        )
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    return [item[1] for item in ranked[:limit]]
+
+
+def local_ai_backend() -> str:
+    return os.environ.get("HEAL_HUB_AI_BACKEND", "rules").strip().lower() or "rules"
+
+
+def local_ai_enabled() -> bool:
+    return local_ai_backend() == "ollama"
+
+
+def local_ai_base_url() -> str:
+    return os.environ.get("HEAL_HUB_OLLAMA_URL", "http://127.0.0.1:11434").strip().rstrip("/")
+
+
+def local_ai_model_name() -> str:
+    return os.environ.get("HEAL_HUB_OLLAMA_MODEL", "qwen2.5:0.5b").strip() or "qwen2.5:0.5b"
+
+
+def local_ai_timeout() -> int:
+    raw_value = os.environ.get("HEAL_HUB_OLLAMA_TIMEOUT", "45").strip()
+    try:
+        return max(5, min(int(raw_value), 180))
+    except (TypeError, ValueError):
+        return 45
+
+
+def local_ai_num_predict() -> int:
+    raw_value = os.environ.get("HEAL_HUB_OLLAMA_NUM_PREDICT", "96").strip()
+    try:
+        return max(40, min(int(raw_value), 220))
+    except (TypeError, ValueError):
+        return 96
+
+
+def normalize_ai_guidance(value: Any, fallback: list[str]) -> list[str]:
+    if isinstance(value, list):
+        cleaned = [str(item).strip() for item in value if str(item).strip()]
+        return cleaned[:3] or fallback
+
+    if isinstance(value, str):
+        cleaned = [line.strip(" -*\t") for line in value.splitlines() if line.strip(" -*\t")]
+        return cleaned[:3] or fallback
+
+    return fallback
+
+
+GENERIC_SUPPORT_TRACKS = {"general wellness", "general support"}
+
+
+def sentence_case(value: str) -> str:
+    cleaned = str(value).strip()
+    if not cleaned:
+        return ""
+    return cleaned[0].upper() + cleaned[1:]
+
+
+def normalize_local_ai_summary(payload: Any, fallback: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return fallback
+
+    track = sentence_case(str(payload.get("track", "")).strip()) or fallback["track"]
+    urgency = sentence_case(str(payload.get("urgency", "")).strip()) or fallback["urgency"]
+    guidance = normalize_ai_guidance(payload.get("guidance"), fallback["guidance"])
+    guidance = [sentence_case(item) for item in guidance]
+    disclaimer = sentence_case(str(payload.get("disclaimer", "")).strip()) or fallback["disclaimer"]
+
+    return {
+        "track": track,
+        "urgency": urgency,
+        "guidance": guidance,
+        "disclaimer": disclaimer,
+    }
+
+
+def local_summary_is_usable(local_summary: dict[str, Any], fallback: dict[str, Any]) -> bool:
+    local_track = str(local_summary.get("track", "")).strip().lower()
+    fallback_track = str(fallback.get("track", "")).strip().lower()
+    local_guidance = [str(item).strip() for item in local_summary.get("guidance", []) if str(item).strip()]
+
+    if not local_track:
+        return False
+    if fallback_track and fallback_track not in GENERIC_SUPPORT_TRACKS and local_track in GENERIC_SUPPORT_TRACKS:
+        return False
+    if len(local_guidance) < 2:
+        return False
+    if sum(1 for item in local_guidance if len(item.split()) >= 3) < 2:
+        return False
+    return True
+
+
+def request_local_ai_summary(
+    problem_text: str,
+    themes: list[str],
+    symptoms: list[str],
+    fallback: dict[str, Any],
+) -> dict[str, Any] | None:
+    payload = {
+        "model": local_ai_model_name(),
+        "prompt": build_local_ai_prompt(problem_text, themes, symptoms, fallback),
+        "stream": False,
+        "format": "json",
+        "options": {
+            "temperature": 0.2,
+            "num_predict": local_ai_num_predict(),
+        },
+    }
+
+    request_body = json.dumps(payload).encode("utf-8")
+    request_target = Request(
+        f"{local_ai_base_url()}/api/generate",
+        data=request_body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urlopen(request_target, timeout=local_ai_timeout()) as response:
+            raw_response = response.read().decode("utf-8")
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+        return None
+
+    try:
+        response_payload = json.loads(raw_response)
+        model_text = response_payload.get("response", "{}")
+        if isinstance(model_text, dict):
+            model_payload = model_text
+        else:
+            model_payload = json.loads(str(model_text).strip())
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+    return normalize_local_ai_summary(model_payload, fallback)
+
+
+def build_rule_based_ai_agent_result(problem_text: str, username: str = "") -> dict[str, Any]:
+    parsed_symptoms = [
+        symptom
+        for symptom in (split_symptoms(problem_text) if looks_like_symptom_list(problem_text) else [])
+        if symptom in SYMPTOM_LIBRARY
+    ]
+    detected_symptoms = dedupe_preserving_order(
+        extract_medical_symptoms_from_text(problem_text) + parsed_symptoms
+    )
+    theme_ids = extract_support_themes(problem_text, detected_symptoms)
+    summary = build_support_summary(problem_text, detected_symptoms, theme_ids)
+    focus_labels = dedupe_preserving_order(
+        support_theme_labels(theme_ids)
+        + [titlecase_words(symptom.replace("-", " ")) for symptom in detected_symptoms]
+    )
+    if not focus_labels:
+        focus_labels = [titlecase_words(token) for token in extract_input_keywords(problem_text)[:4]]
+    therapist_recommendations = recommend_therapists_for_text(problem_text, theme_ids)
+    story_recommendations = recommend_stories_for_text(problem_text, theme_ids, username=username)
+    community_recommendations = recommend_communities_for_text(problem_text, theme_ids, username=username)
+
+    return {
+        "problem_text": problem_text,
+        "symptoms": detected_symptoms,
+        "focus_labels": focus_labels,
+        "themes": theme_ids,
+        "summary": summary,
+        "headline": f"Suggested support path: {summary['track'].title()}",
+        "therapist_recommendations": therapist_recommendations,
+        "story_recommendations": story_recommendations,
+        "community_recommendations": community_recommendations,
+    }
+
+
+def build_ai_agent_result(symptom_text: str) -> dict[str, Any]:
+    user = session.get("user", {})
+    username = str(user.get("username", "")).strip()
+    base_result = build_rule_based_ai_agent_result(symptom_text, username=username)
+    fallback_summary = base_result["summary"]
+
+    if local_ai_enabled():
+        local_summary = request_local_ai_summary(
+            symptom_text,
+            base_result.get("themes", []),
+            base_result.get("symptoms", []),
+            fallback_summary,
+        )
+        if local_summary and local_summary_is_usable(local_summary, fallback_summary):
+            return {
+                **base_result,
+                "summary": local_summary,
+                "headline": f"Suggested support path: {local_summary['track'].title()}",
+            }
+
+    return base_result
 
 
 def role_dashboard_endpoint(user: dict[str, Any]) -> str:

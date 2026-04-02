@@ -113,11 +113,11 @@
     </article>
 
     <section class="patient-dashboard-layout">
-      <article class="surface dashboard-panel patient-dashboard-panel profile-editor-card" data-reveal>
+      <article class="surface dashboard-panel patient-dashboard-panel profile-editor-card" data-reveal aria-labelledby="doctor-profile-heading">
         <div class="dashboard-section-head">
           <div>
             <p class="eyebrow">Profile</p>
-            <h2>Doctor profile</h2>
+            <h2 id="doctor-profile-heading">Doctor profile</h2>
           </div>
         </div>
 
@@ -161,11 +161,11 @@
         </div>
       </article>
 
-      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-appointments" data-reveal>
+      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-appointments" data-reveal aria-labelledby="doctor-upcoming-heading">
         <div class="dashboard-section-head">
           <div>
             <p class="eyebrow">Appointments</p>
-            <h2>Upcoming appointments</h2>
+            <h2 id="doctor-upcoming-heading">Upcoming appointments</h2>
           </div>
           <a href="{{ url_for('browse_patients') }}" class="story-filter-chip">Open patients</a>
         </div>
@@ -218,11 +218,11 @@
         {% endif %}
       </article>
 
-      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-review" data-reveal>
+      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-review" data-reveal aria-labelledby="doctor-review-heading">
         <div class="dashboard-section-head">
           <div>
             <p class="eyebrow">Appointments</p>
-            <h2>Awaiting review</h2>
+            <h2 id="doctor-review-heading">Awaiting review</h2>
           </div>
         </div>
 
@@ -266,11 +266,11 @@
         {% endif %}
       </article>
 
-      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-stories" data-reveal>
+      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-stories" data-reveal aria-labelledby="doctor-stories-heading">
         <div class="dashboard-section-head">
           <div>
             <p class="eyebrow">Stories</p>
-            <h2>{{ focus_patient_profile.display_name or portal_patient.display_name }} watched</h2>
+            <h2 id="doctor-stories-heading">{{ focus_patient_profile.display_name or portal_patient.display_name }} watched</h2>
           </div>
           <a href="/movies" class="story-filter-chip">Open library</a>
         </div>
@@ -313,11 +313,11 @@
         {% endif %}
       </article>
 
-      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-community" data-reveal>
+      <article class="surface dashboard-panel patient-dashboard-panel patient-dashboard-panel-community" data-reveal aria-labelledby="doctor-community-heading">
         <div class="dashboard-section-head">
           <div>
             <p class="eyebrow">Community</p>
-            <h2>{{ focus_patient_profile.display_name or portal_patient.display_name }} joined</h2>
+            <h2 id="doctor-community-heading">{{ focus_patient_profile.display_name or portal_patient.display_name }} joined</h2>
           </div>
           <a href="/community" class="story-filter-chip">Open circles</a>
         </div>
